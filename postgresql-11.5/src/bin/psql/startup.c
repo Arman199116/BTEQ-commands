@@ -447,6 +447,7 @@ parse_psql_options(int argc, char *argv[], struct adhoc_opts *options)
 		{"html", no_argument, NULL, 'H'},
 		{"list", no_argument, NULL, 'l'},
 		{"log-file", required_argument, NULL, 'L'},
+		{"mode", required_argument, NULL, 'm'},
 		{"no-readline", no_argument, NULL, 'n'},
 		{"single-transaction", no_argument, NULL, '1'},
 		{"output", required_argument, NULL, 'o'},
@@ -529,6 +530,9 @@ parse_psql_options(int argc, char *argv[], struct adhoc_opts *options)
 				break;
 			case 'L':
 				options->logfilename = pg_strdup(optarg);
+				break;
+			case 'm':
+				pset.mode = atoi(optarg);
 				break;
 			case 'n':
 				options->no_readline = true;

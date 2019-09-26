@@ -83,7 +83,7 @@ typedef struct _psqlSettings
 	int			encoding;		/* client_encoding */
 	FILE	   *queryFout;		/* where to send the query results */
 	bool		queryFoutPipe;	/* queryFout is from a popen() */
-
+	int         mode;
 	FILE	   *copyStream;		/* Stream to read/write for \copy command */
 
 	PGresult   *last_error_result;	/* most recent error result, if any */
