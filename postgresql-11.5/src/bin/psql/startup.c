@@ -411,7 +411,11 @@ error:
 		if (!pset.quiet)
 			printf(_("Type \"help\" for help.\n\n"));
 		initializeInput(options.no_readline ? 0 : 1);
-		successResult = MainLoop(stdin);
+		if (pset.mode == 1) {
+			successResult = MainLoopBteq(stdin);
+		} else {
+			successResult = MainLoop(stdin);
+		}
 	}
 
 	/* clean up */

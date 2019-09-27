@@ -2656,6 +2656,7 @@ avl_node
 avl_tree
 avw_dbase
 backslashResult
+dotResult
 base_yy_extra_type
 basebackup_options
 bgworker_main_type
