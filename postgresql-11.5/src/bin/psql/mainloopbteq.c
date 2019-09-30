@@ -3,7 +3,7 @@
  *
  * Copyright (c) 2000-2018, PostgreSQL Global Development Group
  *
- * src/bin/psql/mainloop.c
+ * src/bin/psql/mainloopbteq.c
  */
 #include "postgres_fe.h"
 #include "mainloop.h"
@@ -22,9 +22,6 @@
 /*
  * Main processing loop for reading lines of input
  *	and sending them to the backend.
- *
- * This loop is re-entrant. May be called by \i command
- *	which reads input from a file.
  */
 int
 MainLoopBteq(FILE *source)
@@ -42,7 +39,7 @@ MainLoopBteq(FILE *source)
 	bool		success;
 	bool		line_saved_in_history;
 	volatile int successResult = EXIT_SUCCESS;
-	volatile dotResult slashCmdStatus = PSQL_CMD_UNKNOWN;
+	volatile dotResult slashCmdStatus = BTEQ_CMD_UNKNOWN;
 	volatile promptStatus_t prompt_status = PROMPT_READY;
 	volatile int count_eof = 0;
 	volatile bool die_on_error = false;
@@ -113,7 +110,7 @@ printf("bteq mainloop.c\n");
 			resetPQExpBuffer(query_buf);
 			resetPQExpBuffer(history_buf);
 			count_eof = 0;
-			slashCmdStatus = PSQL_CMD_UNKNOWN;
+			slashCmdStatus = BTEQ_CMD_UNKNOWN;
 			prompt_status = PROMPT_READY;
 			pset.stmt_lineno = 1;
 			cancel_pressed = false;
@@ -422,7 +419,7 @@ printf("bteq mainloop.c\n");
 				if (conditional_active(cond_stack))
 				{
 					success = SendQuery(query_buf->data);
-					slashCmdStatus = success ? PSQL_CMD_SEND : PSQL_CMD_ERROR;
+					slashCmdStatus = success ? BTEQ_CMD_SEND : BTEQ_CMD_ERROR;
 					pset.stmt_lineno = 1;
 
 					/* transfer query to previous_buf by pointer-swapping */
@@ -444,7 +441,7 @@ printf("bteq mainloop.c\n");
 						psql_error("query ignored; use \\endif or Ctrl-C to exit current \\if block\n");
 					/* fake an OK result for purposes of loop checks */
 					success = true;
-					slashCmdStatus = PSQL_CMD_SEND;
+					slashCmdStatus = BTEQ_CMD_SEND;
 					pset.stmt_lineno = 1;
 					/* note that query_buf doesn't change state */
 				}
@@ -483,7 +480,7 @@ printf("bteq mainloop.c\n");
 												 query_buf,
 												 previous_buf);
 
-				success = slashCmdStatus != PSQL_CMD_ERROR;
+				success = slashCmdStatus != BTEQ_CMD_ERROR;
 
 				/*
 				 * Resetting stmt_lineno after a dot command isn't
@@ -492,7 +489,7 @@ printf("bteq mainloop.c\n");
 				 */
 				pset.stmt_lineno = 1;
 
-				if (slashCmdStatus == PSQL_CMD_SEND)
+				if (slashCmdStatus == BTEQ_CMD_SEND)
 				{
 					/* should not see this in inactive branch */
 					Assert(conditional_active(cond_stack));
@@ -511,7 +508,7 @@ printf("bteq mainloop.c\n");
 					/* flush any paren nesting info after forced send */
 					psql_scan_reset(scan_state);
 				}
-				else if (slashCmdStatus == PSQL_CMD_NEWEDIT)
+				else if (slashCmdStatus == BTEQ_CMD_NEWEDIT)
 				{
 					/* should not see this in inactive branch */
 					Assert(conditional_active(cond_stack));
@@ -527,7 +524,7 @@ printf("bteq mainloop.c\n");
 					line_saved_in_history = false;
 					prompt_status = PROMPT_READY;
 				}
-				else if (slashCmdStatus == PSQL_CMD_TERMINATE)
+				else if (slashCmdStatus == BTEQ_CMD_TERMINATE)
 					break;
 			}
 
@@ -544,7 +541,7 @@ printf("bteq mainloop.c\n");
 		psql_scan_finish(scan_state);
 		free(line);
 
-		if (slashCmdStatus == PSQL_CMD_TERMINATE)
+		if (slashCmdStatus == BTEQ_CMD_TERMINATE)
 		{
 			successResult = EXIT_SUCCESS;
 			break;
@@ -597,7 +594,7 @@ printf("bteq mainloop.c\n");
 	 * Check for unbalanced \if-\endifs unless user explicitly quit, or the
 	 * script is erroring out
 	 */
-	if (slashCmdStatus != PSQL_CMD_TERMINATE &&
+	if (slashCmdStatus != BTEQ_CMD_TERMINATE &&
 		successResult != EXIT_USER &&
 		!conditional_stack_empty(cond_stack))
 	{

@@ -3,10 +3,10 @@
  *
  * Copyright (c) 2000-2018, PostgreSQL Global Development Group
  *
- * src/bin/psql/command.h
+ * src/bin/psql/commandbteq.h
  */
-#ifndef COMMAND_H
-#define COMMAND_H
+#ifndef COMMAND_H_BTEQ
+#define COMMAND_H_BTEQ
 
 #include "fe_utils/print.h"
 #include "fe_utils/psqlscan.h"
@@ -15,12 +15,12 @@
 
 typedef enum _dotResult
 {
-	PSQL_CMD_UNKNOWN = 0,		/* not done parsing yet (internal only) */
-	PSQL_CMD_SEND,				/* query complete; send off */
-	PSQL_CMD_SKIP_LINE,			/* keep building query */
-	PSQL_CMD_TERMINATE,			/* quit program */
-	PSQL_CMD_NEWEDIT,			/* query buffer was changed (e.g., via \e) */
-	PSQL_CMD_ERROR				/* the execution of the dot command
+	BTEQ_CMD_UNKNOWN = 0,		/* not done parsing yet (internal only) */
+	BTEQ_CMD_SEND,				/* query complete; send off */
+	BTEQ_CMD_SKIP_LINE,			/* keep building query */
+	BTEQ_CMD_TERMINATE,			/* quit program */
+	BTEQ_CMD_NEWEDIT,			/* query buffer was changed (e.g., via \e) */
+	BTEQ_CMD_ERROR				/* the execution of the dot command
 								 * resulted in an error */
 } dotResult;
 
@@ -43,4 +43,4 @@ extern void SyncVariablesbteq(void);
 
 extern void UnsyncVariablesbteq(void);
 
-#endif							/* COMMAND_H */
+#endif							/* COMMAND_H_BTEQ */

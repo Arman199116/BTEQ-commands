@@ -3,7 +3,7 @@
  *
  * Copyright (c) 2000-2018, PostgreSQL Global Development Group
  *
- * src/bin/psql/command.c
+ * src/bin/psql/commandbteq.c
  */
 #include "postgres_fe.h"
 #include "commandbteq.h"
@@ -169,9 +169,9 @@ static void checkWin32Codepage(void);
 
 
 /*----------
- * HandleSlashCmds:
+ * HandleDotCmds:
  *
- * Handles all the different commands that start with '\'.
+ * Handles all the different commands that start with '.'.
  * Ordinarily called by MainLoop().
  *
  * scan_state is a lexer working state that is set to continue scanning
@@ -214,16 +214,16 @@ HandleDotCmds(PsqlScanState scan_state,
 	/* And try to execute it */
 	status = exec_command(cmd, scan_state, cstack, query_buf, previous_buf);
 
-	if (status == PSQL_CMD_UNKNOWN)
+	if (status == BTEQ_CMD_UNKNOWN)
 	{
 		if (pset.cur_cmd_interactive)
 			psql_error("Invalid command \\%s. Try \\? for help.\n", cmd);
 		else
 			psql_error("invalid command \\%s\n", cmd);
-		status = PSQL_CMD_ERROR;
+		status = BTEQ_CMD_ERROR;
 	}
 
-	if (status != PSQL_CMD_ERROR)
+	if (status != BTEQ_CMD_ERROR)
 	{
 		/*
 		 * Eat any remaining arguments after a valid command.  We want to
@@ -265,9 +265,9 @@ HandleDotCmds(PsqlScanState scan_state,
 /*
  * Subroutine to actually try to execute a dot command.
  *
- * The typical "success" result code is PSQL_CMD_SKIP_LINE, although some
- * commands return something else.  Failure results are PSQL_CMD_ERROR,
- * unless PSQL_CMD_UNKNOWN is more appropriate.
+ * The typical "success" result code is BTEQ_CMD_SKIP_LINE, although some
+ * commands return something else.  Failure results are BTEQ_CMD_ERROR,
+ * unless BTEQ_CMD_UNKNOWN is more appropriate.
  */
 static dotResult
 exec_command(const char *cmd,
@@ -402,14 +402,14 @@ exec_command(const char *cmd,
 	else if (strcmp(cmd, "?") == 0)
 		status = exec_command_slash_command_help(scan_state, active_branch);
 	else
-		status = PSQL_CMD_UNKNOWN;
+		status = BTEQ_CMD_UNKNOWN;
 
 	/*
-	 * All the commands that return PSQL_CMD_SEND want to execute previous_buf
+	 * All the commands that return BTEQ_CMD_SEND want to execute previous_buf
 	 * if query_buf is empty.  For convenience we implement that here, not in
 	 * the individual command subroutines.
 	 */
-	if (status == PSQL_CMD_SEND)
+	if (status == BTEQ_CMD_SEND)
 		copy_previous_query(query_buf, previous_buf);
 
 	return status;
@@ -434,7 +434,7 @@ exec_command_a(PsqlScanState scan_state, bool active_branch)
 			success = do_psetbteq("format", "unaligned", &pset.popt, pset.quiet);
 	}
 
-	return success ? PSQL_CMD_SKIP_LINE : PSQL_CMD_ERROR;
+	return success ? BTEQ_CMD_SKIP_LINE : BTEQ_CMD_ERROR;
 }
 
 /*
@@ -456,7 +456,7 @@ exec_command_C(PsqlScanState scan_state, bool active_branch)
 	else
 		ignore_slash_options(scan_state);
 
-	return success ? PSQL_CMD_SKIP_LINE : PSQL_CMD_ERROR;
+	return success ? BTEQ_CMD_SKIP_LINE : BTEQ_CMD_ERROR;
 }
 
 /*
@@ -520,7 +520,7 @@ exec_command_connect(PsqlScanState scan_state, bool active_branch)
 	else
 		ignore_slash_options(scan_state);
 
-	return success ? PSQL_CMD_SKIP_LINE : PSQL_CMD_ERROR;
+	return success ? BTEQ_CMD_SKIP_LINE : BTEQ_CMD_ERROR;
 }
 
 /*
@@ -578,7 +578,7 @@ exec_command_cd(PsqlScanState scan_state, bool active_branch, const char *cmd)
 	else
 		ignore_slash_options(scan_state);
 
-	return success ? PSQL_CMD_SKIP_LINE : PSQL_CMD_ERROR;
+	return success ? BTEQ_CMD_SKIP_LINE : BTEQ_CMD_ERROR;
 }
 
 /*
@@ -608,7 +608,7 @@ exec_command_conninfo(PsqlScanState scan_state, bool active_branch)
 		}
 	}
 
-	return PSQL_CMD_SKIP_LINE;
+	return BTEQ_CMD_SKIP_LINE;
 }
 
 /*
@@ -630,7 +630,7 @@ exec_command_copy(PsqlScanState scan_state, bool active_branch)
 	else
 		ignore_slash_whole_line(scan_state);
 
-	return success ? PSQL_CMD_SKIP_LINE : PSQL_CMD_ERROR;
+	return success ? BTEQ_CMD_SKIP_LINE : BTEQ_CMD_ERROR;
 }
 
 /*
@@ -642,7 +642,7 @@ exec_command_copyright(PsqlScanState scan_state, bool active_branch)
 	if (active_branch)
 		print_copyright();
 
-	return PSQL_CMD_SKIP_LINE;
+	return BTEQ_CMD_SKIP_LINE;
 }
 
 /*
@@ -651,7 +651,7 @@ exec_command_copyright(PsqlScanState scan_state, bool active_branch)
 static dotResult
 exec_command_crosstabview(PsqlScanState scan_state, bool active_branch)
 {
-	dotResult status = PSQL_CMD_SKIP_LINE;
+	dotResult status = BTEQ_CMD_SKIP_LINE;
 
 	if (active_branch)
 	{
@@ -661,7 +661,7 @@ exec_command_crosstabview(PsqlScanState scan_state, bool active_branch)
 			pset.ctv_args[i] = psql_scan_slash_option(scan_state,
 													  OT_NORMAL, NULL, true);
 		pset.crosstab_flag = true;
-		status = PSQL_CMD_SEND;
+		status = BTEQ_CMD_SEND;
 	}
 	else
 		ignore_slash_options(scan_state);
@@ -675,7 +675,7 @@ exec_command_crosstabview(PsqlScanState scan_state, bool active_branch)
 static dotResult
 exec_command_d(PsqlScanState scan_state, bool active_branch, const char *cmd)
 {
-	dotResult status = PSQL_CMD_SKIP_LINE;
+	dotResult status = BTEQ_CMD_SKIP_LINE;
 	bool		success = true;
 
 	if (active_branch)
@@ -740,7 +740,7 @@ exec_command_d(PsqlScanState scan_state, bool active_branch, const char *cmd)
 						success = describeFunctions(&cmd[2], pattern, show_verbose, show_system);
 						break;
 					default:
-						status = PSQL_CMD_UNKNOWN;
+						status = BTEQ_CMD_UNKNOWN;
 						break;
 				}
 				break;
@@ -791,7 +791,7 @@ exec_command_d(PsqlScanState scan_state, bool active_branch, const char *cmd)
 						free(pattern2);
 				}
 				else
-					status = PSQL_CMD_UNKNOWN;
+					status = BTEQ_CMD_UNKNOWN;
 				break;
 			case 'R':
 				switch (cmd[2])
@@ -806,7 +806,7 @@ exec_command_d(PsqlScanState scan_state, bool active_branch, const char *cmd)
 						success = describeSubscriptions(pattern, show_verbose);
 						break;
 					default:
-						status = PSQL_CMD_UNKNOWN;
+						status = BTEQ_CMD_UNKNOWN;
 				}
 				break;
 			case 'u':
@@ -829,7 +829,7 @@ exec_command_d(PsqlScanState scan_state, bool active_branch, const char *cmd)
 						success = listTSTemplates(pattern, show_verbose);
 						break;
 					default:
-						status = PSQL_CMD_UNKNOWN;
+						status = BTEQ_CMD_UNKNOWN;
 						break;
 				}
 				break;
@@ -849,7 +849,7 @@ exec_command_d(PsqlScanState scan_state, bool active_branch, const char *cmd)
 						success = listForeignTables(pattern, show_verbose);
 						break;
 					default:
-						status = PSQL_CMD_UNKNOWN;
+						status = BTEQ_CMD_UNKNOWN;
 						break;
 				}
 				break;
@@ -863,7 +863,7 @@ exec_command_d(PsqlScanState scan_state, bool active_branch, const char *cmd)
 				success = listEventTriggers(pattern, show_verbose);
 				break;
 			default:
-				status = PSQL_CMD_UNKNOWN;
+				status = BTEQ_CMD_UNKNOWN;
 		}
 
 		if (pattern)
@@ -873,7 +873,7 @@ exec_command_d(PsqlScanState scan_state, bool active_branch, const char *cmd)
 		ignore_slash_options(scan_state);
 
 	if (!success)
-		status = PSQL_CMD_ERROR;
+		status = BTEQ_CMD_ERROR;
 
 	return status;
 }
@@ -886,14 +886,14 @@ static dotResult
 exec_command_edit(PsqlScanState scan_state, bool active_branch,
 				  PQExpBuffer query_buf, PQExpBuffer previous_buf)
 {
-	dotResult status = PSQL_CMD_SKIP_LINE;
+	dotResult status = BTEQ_CMD_SKIP_LINE;
 
 	if (active_branch)
 	{
 		if (!query_buf)
 		{
 			psql_error("no query buffer\n");
-			status = PSQL_CMD_ERROR;
+			status = BTEQ_CMD_ERROR;
 		}
 		else
 		{
@@ -926,10 +926,10 @@ exec_command_edit(PsqlScanState scan_state, bool active_branch,
 				if (lineno < 1)
 				{
 					psql_error("invalid line number: %s\n", ln);
-					status = PSQL_CMD_ERROR;
+					status = BTEQ_CMD_ERROR;
 				}
 			}
-			if (status != PSQL_CMD_ERROR)
+			if (status != BTEQ_CMD_ERROR)
 			{
 				expand_tilde(&fname);
 				if (fname)
@@ -939,9 +939,9 @@ exec_command_edit(PsqlScanState scan_state, bool active_branch,
 				copy_previous_query(query_buf, previous_buf);
 
 				if (do_edit(fname, query_buf, lineno, NULL))
-					status = PSQL_CMD_NEWEDIT;
+					status = BTEQ_CMD_NEWEDIT;
 				else
-					status = PSQL_CMD_ERROR;
+					status = BTEQ_CMD_ERROR;
 			}
 			if (fname)
 				free(fname);
@@ -963,7 +963,7 @@ static dotResult
 exec_command_ef_ev(PsqlScanState scan_state, bool active_branch,
 				   PQExpBuffer query_buf, bool is_func)
 {
-	dotResult status = PSQL_CMD_SKIP_LINE;
+	dotResult status = BTEQ_CMD_SKIP_LINE;
 
 	if (active_branch)
 	{
@@ -984,12 +984,12 @@ exec_command_ef_ev(PsqlScanState scan_state, bool active_branch,
 			else
 				psql_error("The server (version %s) does not support editing view definitions.\n",
 						   sverbuf);
-			status = PSQL_CMD_ERROR;
+			status = BTEQ_CMD_ERROR;
 		}
 		else if (!query_buf)
 		{
 			psql_error("no query buffer\n");
-			status = PSQL_CMD_ERROR;
+			status = BTEQ_CMD_ERROR;
 		}
 		else
 		{
@@ -1000,7 +1000,7 @@ exec_command_ef_ev(PsqlScanState scan_state, bool active_branch,
 			if (lineno == 0)
 			{
 				/* error already reported */
-				status = PSQL_CMD_ERROR;
+				status = BTEQ_CMD_ERROR;
 			}
 			else if (!obj_desc)
 			{
@@ -1023,12 +1023,12 @@ exec_command_ef_ev(PsqlScanState scan_state, bool active_branch,
 			else if (!lookup_object_oid(eot, obj_desc, &obj_oid))
 			{
 				/* error already reported */
-				status = PSQL_CMD_ERROR;
+				status = BTEQ_CMD_ERROR;
 			}
 			else if (!get_create_object_cmd(eot, obj_oid, query_buf))
 			{
 				/* error already reported */
-				status = PSQL_CMD_ERROR;
+				status = BTEQ_CMD_ERROR;
 			}
 			else if (is_func && lineno > 0)
 			{
@@ -1057,16 +1057,16 @@ exec_command_ef_ev(PsqlScanState scan_state, bool active_branch,
 			}
 		}
 
-		if (status != PSQL_CMD_ERROR)
+		if (status != BTEQ_CMD_ERROR)
 		{
 			bool		edited = false;
 
 			if (!do_edit(NULL, query_buf, lineno, &edited))
-				status = PSQL_CMD_ERROR;
+				status = BTEQ_CMD_ERROR;
 			else if (!edited)
 				puts(_("No changes"));
 			else
-				status = PSQL_CMD_NEWEDIT;
+				status = BTEQ_CMD_NEWEDIT;
 		}
 
 		if (obj_desc)
@@ -1118,7 +1118,7 @@ exec_command_echo(PsqlScanState scan_state, bool active_branch, const char *cmd)
 	else
 		ignore_slash_options(scan_state);
 
-	return PSQL_CMD_SKIP_LINE;
+	return BTEQ_CMD_SKIP_LINE;
 }
 
 /*
@@ -1156,7 +1156,7 @@ exec_command_encoding(PsqlScanState scan_state, bool active_branch)
 	else
 		ignore_slash_options(scan_state);
 
-	return PSQL_CMD_SKIP_LINE;
+	return BTEQ_CMD_SKIP_LINE;
 }
 
 /*
@@ -1186,7 +1186,7 @@ exec_command_errverbose(PsqlScanState scan_state, bool active_branch)
 			puts(_("There is no previous error."));
 	}
 
-	return PSQL_CMD_SKIP_LINE;
+	return BTEQ_CMD_SKIP_LINE;
 }
 
 /*
@@ -1208,7 +1208,7 @@ exec_command_f(PsqlScanState scan_state, bool active_branch)
 	else
 		ignore_slash_options(scan_state);
 
-	return success ? PSQL_CMD_SKIP_LINE : PSQL_CMD_ERROR;
+	return success ? BTEQ_CMD_SKIP_LINE : BTEQ_CMD_ERROR;
 }
 
 /*
@@ -1218,7 +1218,7 @@ exec_command_f(PsqlScanState scan_state, bool active_branch)
 static dotResult
 exec_command_g(PsqlScanState scan_state, bool active_branch, const char *cmd)
 {
-	dotResult status = PSQL_CMD_SKIP_LINE;
+	dotResult status = BTEQ_CMD_SKIP_LINE;
 
 	if (active_branch)
 	{
@@ -1235,7 +1235,7 @@ exec_command_g(PsqlScanState scan_state, bool active_branch, const char *cmd)
 		free(fname);
 		if (strcmp(cmd, "gx") == 0)
 			pset.g_expanded = true;
-		status = PSQL_CMD_SEND;
+		status = BTEQ_CMD_SEND;
 	}
 	else
 		ignore_slash_filepipe(scan_state);
@@ -1249,12 +1249,12 @@ exec_command_g(PsqlScanState scan_state, bool active_branch, const char *cmd)
 static dotResult
 exec_command_gdesc(PsqlScanState scan_state, bool active_branch)
 {
-	dotResult status = PSQL_CMD_SKIP_LINE;
+	dotResult status = BTEQ_CMD_SKIP_LINE;
 
 	if (active_branch)
 	{
 		pset.gdesc_flag = true;
-		status = PSQL_CMD_SEND;
+		status = BTEQ_CMD_SEND;
 	}
 
 	return status;
@@ -1266,12 +1266,12 @@ exec_command_gdesc(PsqlScanState scan_state, bool active_branch)
 static dotResult
 exec_command_gexec(PsqlScanState scan_state, bool active_branch)
 {
-	dotResult status = PSQL_CMD_SKIP_LINE;
+	dotResult status = BTEQ_CMD_SKIP_LINE;
 
 	if (active_branch)
 	{
 		pset.gexec_flag = true;
-		status = PSQL_CMD_SEND;
+		status = BTEQ_CMD_SEND;
 	}
 
 	return status;
@@ -1283,7 +1283,7 @@ exec_command_gexec(PsqlScanState scan_state, bool active_branch)
 static dotResult
 exec_command_gset(PsqlScanState scan_state, bool active_branch)
 {
-	dotResult status = PSQL_CMD_SKIP_LINE;
+	dotResult status = BTEQ_CMD_SKIP_LINE;
 
 	if (active_branch)
 	{
@@ -1298,7 +1298,7 @@ exec_command_gset(PsqlScanState scan_state, bool active_branch)
 			pset.gset_prefix = pg_strdup("");
 		}
 		/* gset_prefix is freed later */
-		status = PSQL_CMD_SEND;
+		status = BTEQ_CMD_SEND;
 	}
 	else
 		ignore_slash_options(scan_state);
@@ -1334,7 +1334,7 @@ exec_command_help(PsqlScanState scan_state, bool active_branch)
 	else
 		ignore_slash_whole_line(scan_state);
 
-	return PSQL_CMD_SKIP_LINE;
+	return BTEQ_CMD_SKIP_LINE;
 }
 
 /*
@@ -1353,7 +1353,7 @@ exec_command_html(PsqlScanState scan_state, bool active_branch)
 			success = do_psetbteq("format", "aligned", &pset.popt, pset.quiet);
 	}
 
-	return success ? PSQL_CMD_SKIP_LINE : PSQL_CMD_ERROR;
+	return success ? BTEQ_CMD_SKIP_LINE : BTEQ_CMD_ERROR;
 }
 
 /*
@@ -1388,7 +1388,7 @@ exec_command_include(PsqlScanState scan_state, bool active_branch, const char *c
 	else
 		ignore_slash_options(scan_state);
 
-	return success ? PSQL_CMD_SKIP_LINE : PSQL_CMD_ERROR;
+	return success ? BTEQ_CMD_SKIP_LINE : BTEQ_CMD_ERROR;
 }
 
 /*
@@ -1438,7 +1438,7 @@ exec_command_if(PsqlScanState scan_state, ConditionalStack cstack,
 		ignore_boolean_expression(scan_state);
 	}
 
-	return PSQL_CMD_SKIP_LINE;
+	return BTEQ_CMD_SKIP_LINE;
 }
 
 /*
@@ -1512,7 +1512,7 @@ exec_command_elif(PsqlScanState scan_state, ConditionalStack cstack,
 			break;
 	}
 
-	return success ? PSQL_CMD_SKIP_LINE : PSQL_CMD_ERROR;
+	return success ? BTEQ_CMD_SKIP_LINE : BTEQ_CMD_ERROR;
 }
 
 /*
@@ -1581,7 +1581,7 @@ exec_command_else(PsqlScanState scan_state, ConditionalStack cstack,
 			break;
 	}
 
-	return success ? PSQL_CMD_SKIP_LINE : PSQL_CMD_ERROR;
+	return success ? BTEQ_CMD_SKIP_LINE : BTEQ_CMD_ERROR;
 }
 
 /*
@@ -1621,7 +1621,7 @@ exec_command_endif(PsqlScanState scan_state, ConditionalStack cstack,
 			break;
 	}
 
-	return success ? PSQL_CMD_SKIP_LINE : PSQL_CMD_ERROR;
+	return success ? BTEQ_CMD_SKIP_LINE : BTEQ_CMD_ERROR;
 }
 
 /*
@@ -1650,7 +1650,7 @@ exec_command_list(PsqlScanState scan_state, bool active_branch, const char *cmd)
 	else
 		ignore_slash_options(scan_state);
 
-	return success ? PSQL_CMD_SKIP_LINE : PSQL_CMD_ERROR;
+	return success ? BTEQ_CMD_SKIP_LINE : BTEQ_CMD_ERROR;
 }
 
 /*
@@ -1659,7 +1659,7 @@ exec_command_list(PsqlScanState scan_state, bool active_branch, const char *cmd)
 static dotResult
 exec_command_lo(PsqlScanState scan_state, bool active_branch, const char *cmd)
 {
-	dotResult status = PSQL_CMD_SKIP_LINE;
+	dotResult status = BTEQ_CMD_SKIP_LINE;
 	bool		success = true;
 
 	if (active_branch)
@@ -1715,7 +1715,7 @@ exec_command_lo(PsqlScanState scan_state, bool active_branch, const char *cmd)
 		}
 
 		else
-			status = PSQL_CMD_UNKNOWN;
+			status = BTEQ_CMD_UNKNOWN;
 
 		free(opt1);
 		free(opt2);
@@ -1724,7 +1724,7 @@ exec_command_lo(PsqlScanState scan_state, bool active_branch, const char *cmd)
 		ignore_slash_options(scan_state);
 
 	if (!success)
-		status = PSQL_CMD_ERROR;
+		status = BTEQ_CMD_ERROR;
 
 	return status;
 }
@@ -1749,7 +1749,7 @@ exec_command_out(PsqlScanState scan_state, bool active_branch)
 	else
 		ignore_slash_filepipe(scan_state);
 
-	return success ? PSQL_CMD_SKIP_LINE : PSQL_CMD_ERROR;
+	return success ? BTEQ_CMD_SKIP_LINE : BTEQ_CMD_ERROR;
 }
 
 /*
@@ -1775,7 +1775,7 @@ exec_command_print(PsqlScanState scan_state, bool active_branch,
 		fflush(stdout);
 	}
 
-	return PSQL_CMD_SKIP_LINE;
+	return BTEQ_CMD_SKIP_LINE;
 }
 
 /*
@@ -1843,7 +1843,7 @@ exec_command_password(PsqlScanState scan_state, bool active_branch)
 	else
 		ignore_slash_options(scan_state);
 
-	return success ? PSQL_CMD_SKIP_LINE : PSQL_CMD_ERROR;
+	return success ? BTEQ_CMD_SKIP_LINE : BTEQ_CMD_ERROR;
 }
 
 /*
@@ -1917,7 +1917,7 @@ exec_command_prompt(PsqlScanState scan_state, bool active_branch,
 	else
 		ignore_slash_options(scan_state);
 
-	return success ? PSQL_CMD_SKIP_LINE : PSQL_CMD_ERROR;
+	return success ? BTEQ_CMD_SKIP_LINE : BTEQ_CMD_ERROR;
 }
 
 /*
@@ -1971,7 +1971,7 @@ exec_command_pset(PsqlScanState scan_state, bool active_branch)
 	else
 		ignore_slash_options(scan_state);
 
-	return success ? PSQL_CMD_SKIP_LINE : PSQL_CMD_ERROR;
+	return success ? BTEQ_CMD_SKIP_LINE : BTEQ_CMD_ERROR;
 }
 
 /*
@@ -1980,10 +1980,10 @@ exec_command_pset(PsqlScanState scan_state, bool active_branch)
 static dotResult
 exec_command_quit(PsqlScanState scan_state, bool active_branch)
 {
-	dotResult status = PSQL_CMD_SKIP_LINE;
+	dotResult status = BTEQ_CMD_SKIP_LINE;
 
 	if (active_branch)
-		status = PSQL_CMD_TERMINATE;
+		status = BTEQ_CMD_TERMINATE;
 
 	return status;
 }
@@ -2003,7 +2003,7 @@ exec_command_reset(PsqlScanState scan_state, bool active_branch,
 			puts(_("Query buffer reset (cleared)."));
 	}
 
-	return PSQL_CMD_SKIP_LINE;
+	return BTEQ_CMD_SKIP_LINE;
 }
 
 /*
@@ -2030,7 +2030,7 @@ exec_command_s(PsqlScanState scan_state, bool active_branch)
 	else
 		ignore_slash_options(scan_state);
 
-	return success ? PSQL_CMD_SKIP_LINE : PSQL_CMD_ERROR;
+	return success ? BTEQ_CMD_SKIP_LINE : BTEQ_CMD_ERROR;
 }
 
 /*
@@ -2083,7 +2083,7 @@ exec_command_set(PsqlScanState scan_state, bool active_branch)
 	else
 		ignore_slash_options(scan_state);
 
-	return success ? PSQL_CMD_SKIP_LINE : PSQL_CMD_ERROR;
+	return success ? BTEQ_CMD_SKIP_LINE : BTEQ_CMD_ERROR;
 }
 
 /*
@@ -2140,7 +2140,7 @@ exec_command_setenv(PsqlScanState scan_state, bool active_branch,
 	else
 		ignore_slash_options(scan_state);
 
-	return success ? PSQL_CMD_SKIP_LINE : PSQL_CMD_ERROR;
+	return success ? BTEQ_CMD_SKIP_LINE : BTEQ_CMD_ERROR;
 }
 
 /*
@@ -2150,7 +2150,7 @@ static dotResult
 exec_command_sf_sv(PsqlScanState scan_state, bool active_branch,
 				   const char *cmd, bool is_func)
 {
-	dotResult status = PSQL_CMD_SKIP_LINE;
+	dotResult status = BTEQ_CMD_SKIP_LINE;
 
 	if (active_branch)
 	{
@@ -2175,7 +2175,7 @@ exec_command_sf_sv(PsqlScanState scan_state, bool active_branch,
 			else
 				psql_error("The server (version %s) does not support showing view definitions.\n",
 						   sverbuf);
-			status = PSQL_CMD_ERROR;
+			status = BTEQ_CMD_ERROR;
 		}
 		else if (!obj_desc)
 		{
@@ -2183,17 +2183,17 @@ exec_command_sf_sv(PsqlScanState scan_state, bool active_branch,
 				psql_error("function name is required\n");
 			else
 				psql_error("view name is required\n");
-			status = PSQL_CMD_ERROR;
+			status = BTEQ_CMD_ERROR;
 		}
 		else if (!lookup_object_oid(eot, obj_desc, &obj_oid))
 		{
 			/* error already reported */
-			status = PSQL_CMD_ERROR;
+			status = BTEQ_CMD_ERROR;
 		}
 		else if (!get_create_object_cmd(eot, obj_oid, buf))
 		{
 			/* error already reported */
-			status = PSQL_CMD_ERROR;
+			status = BTEQ_CMD_ERROR;
 		}
 		else
 		{
@@ -2267,7 +2267,7 @@ exec_command_t(PsqlScanState scan_state, bool active_branch)
 	else
 		ignore_slash_options(scan_state);
 
-	return success ? PSQL_CMD_SKIP_LINE : PSQL_CMD_ERROR;
+	return success ? BTEQ_CMD_SKIP_LINE : BTEQ_CMD_ERROR;
 }
 
 /*
@@ -2289,7 +2289,7 @@ exec_command_T(PsqlScanState scan_state, bool active_branch)
 	else
 		ignore_slash_options(scan_state);
 
-	return success ? PSQL_CMD_SKIP_LINE : PSQL_CMD_ERROR;
+	return success ? BTEQ_CMD_SKIP_LINE : BTEQ_CMD_ERROR;
 }
 
 /*
@@ -2321,7 +2321,7 @@ exec_command_timing(PsqlScanState scan_state, bool active_branch)
 	else
 		ignore_slash_options(scan_state);
 
-	return success ? PSQL_CMD_SKIP_LINE : PSQL_CMD_ERROR;
+	return success ? BTEQ_CMD_SKIP_LINE : BTEQ_CMD_ERROR;
 }
 
 /*
@@ -2351,7 +2351,7 @@ exec_command_unset(PsqlScanState scan_state, bool active_branch,
 	else
 		ignore_slash_options(scan_state);
 
-	return success ? PSQL_CMD_SKIP_LINE : PSQL_CMD_ERROR;
+	return success ? BTEQ_CMD_SKIP_LINE : BTEQ_CMD_ERROR;
 }
 
 /*
@@ -2362,7 +2362,7 @@ exec_command_write(PsqlScanState scan_state, bool active_branch,
 				   const char *cmd,
 				   PQExpBuffer query_buf, PQExpBuffer previous_buf)
 {
-	dotResult status = PSQL_CMD_SKIP_LINE;
+	dotResult status = BTEQ_CMD_SKIP_LINE;
 
 	if (active_branch)
 	{
@@ -2374,14 +2374,14 @@ exec_command_write(PsqlScanState scan_state, bool active_branch,
 		if (!query_buf)
 		{
 			psql_error("no query buffer\n");
-			status = PSQL_CMD_ERROR;
+			status = BTEQ_CMD_ERROR;
 		}
 		else
 		{
 			if (!fname)
 			{
 				psql_error("\\%s: missing required argument\n", cmd);
-				status = PSQL_CMD_ERROR;
+				status = BTEQ_CMD_ERROR;
 			}
 			else
 			{
@@ -2400,7 +2400,7 @@ exec_command_write(PsqlScanState scan_state, bool active_branch,
 				if (!fd)
 				{
 					psql_error("%s: %s\n", fname, strerror(errno));
-					status = PSQL_CMD_ERROR;
+					status = BTEQ_CMD_ERROR;
 				}
 			}
 		}
@@ -2428,7 +2428,7 @@ exec_command_write(PsqlScanState scan_state, bool active_branch,
 			if (result == EOF)
 			{
 				psql_error("%s: %s\n", fname, strerror(errno));
-				status = PSQL_CMD_ERROR;
+				status = BTEQ_CMD_ERROR;
 			}
 		}
 
@@ -2479,7 +2479,7 @@ exec_command_watch(PsqlScanState scan_state, bool active_branch,
 	else
 		ignore_slash_options(scan_state);
 
-	return success ? PSQL_CMD_SKIP_LINE : PSQL_CMD_ERROR;
+	return success ? BTEQ_CMD_SKIP_LINE : BTEQ_CMD_ERROR;
 }
 
 /*
@@ -2501,7 +2501,7 @@ exec_command_x(PsqlScanState scan_state, bool active_branch)
 	else
 		ignore_slash_options(scan_state);
 
-	return success ? PSQL_CMD_SKIP_LINE : PSQL_CMD_ERROR;
+	return success ? BTEQ_CMD_SKIP_LINE : BTEQ_CMD_ERROR;
 }
 
 /*
@@ -2524,7 +2524,7 @@ exec_command_z(PsqlScanState scan_state, bool active_branch)
 	else
 		ignore_slash_options(scan_state);
 
-	return success ? PSQL_CMD_SKIP_LINE : PSQL_CMD_ERROR;
+	return success ? BTEQ_CMD_SKIP_LINE : BTEQ_CMD_ERROR;
 }
 
 /*
@@ -2546,7 +2546,7 @@ exec_command_shell_escape(PsqlScanState scan_state, bool active_branch)
 	else
 		ignore_slash_whole_line(scan_state);
 
-	return success ? PSQL_CMD_SKIP_LINE : PSQL_CMD_ERROR;
+	return success ? BTEQ_CMD_SKIP_LINE : BTEQ_CMD_ERROR;
 }
 
 /*
@@ -2575,7 +2575,7 @@ exec_command_slash_command_help(PsqlScanState scan_state, bool active_branch)
 	else
 		ignore_slash_options(scan_state);
 
-	return PSQL_CMD_SKIP_LINE;
+	return BTEQ_CMD_SKIP_LINE;
 }
 
 
