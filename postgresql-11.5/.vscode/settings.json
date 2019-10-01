@@ -1,0 +1,10 @@
+{
+    "files.associations": {
+        "pg_class_d.h": "c",
+        "string_utils.h": "c",
+        "print.h": "c",
+        "ioctl.h": "c",
+        "psqlscanslash.h": "c",
+        "printbteq.h": "c"
+    }
+}
