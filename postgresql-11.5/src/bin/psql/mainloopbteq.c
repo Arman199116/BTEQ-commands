@@ -81,7 +81,7 @@ printf("bteq mainloop.c\n");
 		/*
 		 * Clean up after a previous Control-C
 		 */
-		if (cancel_pressed)
+		if (cancel_pressed_bteq)
 		{
 			if (!pset.cur_cmd_interactive)
 			{
@@ -92,7 +92,7 @@ printf("bteq mainloop.c\n");
 				break;
 			}
 
-			cancel_pressed = false;
+			cancel_pressed_bteq = false;
 		}
 
 		/*
@@ -113,7 +113,7 @@ printf("bteq mainloop.c\n");
 			slashCmdStatus = BTEQ_CMD_UNKNOWN;
 			prompt_status = PROMPT_READY;
 			pset.stmt_lineno = 1;
-			cancel_pressed = false;
+			cancel_pressed_bteq = false;
 
 			if (pset.cur_cmd_interactive)
 			{

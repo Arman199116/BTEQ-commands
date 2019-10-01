@@ -3023,7 +3023,9 @@ printTableContent
 printTableFooter
 printTableOpt
 printTextFormat
+printTextFormatbteq
 printTextLineFormat
+printTextLineFormatbteq
 printTextLineWrap
 printTextRule
 printfunc
@@ -3204,9 +3206,13 @@ uint8
 uint8_t
 uintptr_t
 unicodeStyleBorderFormat
+unicodeStyleBorderFormatbteq
 unicodeStyleColumnFormat
+unicodeStyleColumnFormatbteq
 unicodeStyleFormat
+unicodeStyleFormatbteq
 unicodeStyleRowFormat
+unicodeStyleRowFormatbteq
 unicode_linestyle
 unit_conversion
 unlogged_relation_entry

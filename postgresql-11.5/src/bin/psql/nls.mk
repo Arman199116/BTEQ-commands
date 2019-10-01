@@ -5,7 +5,7 @@ GETTEXT_FILES    = command.c commandbteq.c common.c copy.c crosstabview.c help.c
                    mainloop.c mainloopbteq.c psqlscanslash.c startup.c \
                    describe.c sql_help.h sql_help.c \
                    tab-complete.c variables.c \
-                   ../../fe_utils/print.c ../../fe_utils/psqlscan.c \
+                   ../../fe_utils/print.c ../../fe_utils/printbteq.c ../../fe_utils/psqlscan.c \
                    ../../common/exec.c ../../common/fe_memutils.c ../../common/username.c \
                    ../../common/wait_error.c
 GETTEXT_TRIGGERS = N_ psql_error simple_prompt write_error

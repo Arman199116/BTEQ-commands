@@ -5,10 +5,10 @@
  *
  * src/bin/psql/commandbteq.h
  */
-#ifndef COMMAND_H_BTEQ
-#define COMMAND_H_BTEQ
+#ifndef COMMAND_H
+#define COMMAND_H
 
-#include "fe_utils/print.h"
+#include "fe_utils/printbteq.h"
 #include "fe_utils/psqlscan.h"
 #include "fe_utils/conditional.h"
 
@@ -43,4 +43,4 @@ extern void SyncVariablesbteq(void);
 
 extern void UnsyncVariablesbteq(void);
 
-#endif							/* COMMAND_H_BTEQ */
+#endif							/* COMMAND_H */

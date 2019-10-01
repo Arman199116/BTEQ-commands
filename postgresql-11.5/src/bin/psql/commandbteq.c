@@ -38,7 +38,7 @@
 #include "input.h"
 #include "large_obj.h"
 #include "mainloop.h"
-#include "fe_utils/print.h"
+#include "fe_utils/printbteq.h"
 #include "psqlscanslash.h"
 #include "settings.h"
 #include "variables.h"
@@ -2206,7 +2206,7 @@ exec_command_sf_sv(PsqlScanState scan_state, bool active_branch,
 				/* count lines in function to see if pager is needed */
 				int			lineno = count_lines_in_buf(buf);
 
-				output = PageOutput(lineno, &(pset.popt.topt));
+				output = PageOutputbteq(lineno, &(pset.popt.topt));
 				is_pager = true;
 			}
 			else
@@ -2235,7 +2235,7 @@ exec_command_sf_sv(PsqlScanState scan_state, bool active_branch,
 			}
 
 			if (is_pager)
-				ClosePager(output);
+				ClosePagerbteq(output);
 		}
 
 		if (obj_desc)
@@ -2389,7 +2389,7 @@ exec_command_write(PsqlScanState scan_state, bool active_branch,
 				if (fname[0] == '|')
 				{
 					is_pipe = true;
-					disable_sigpipe_trap();
+					disable_sigpipe_trap_bteq();
 					fd = popen(&fname[1], "w");
 				}
 				else
@@ -2433,7 +2433,7 @@ exec_command_write(PsqlScanState scan_state, bool active_branch,
 		}
 
 		if (is_pipe)
-			restore_sigpipe_trap();
+			restore_sigpipe_trap_bteq();
 
 		free(fname);
 	}
@@ -3668,11 +3668,11 @@ do_psetbteq(const char *param, const char *value, printQueryOpt *popt, bool quie
 		if (!value)
 			;
 		else if (pg_strncasecmp("ascii", value, vallen) == 0)
-			popt->topt.line_style = &pg_asciiformat;
+			popt->topt.line_style = &pg_asciiformat_bteq;
 		else if (pg_strncasecmp("old-ascii", value, vallen) == 0)
-			popt->topt.line_style = &pg_asciiformat_old;
+			popt->topt.line_style = &pg_asciiformat_old_bteq;
 		else if (pg_strncasecmp("unicode", value, vallen) == 0)
-			popt->topt.line_style = &pg_utf8format;
+			popt->topt.line_style = &pg_utf8format_bteq;
 		else
 		{
 			psql_error("\\pset: allowed line styles are ascii, old-ascii, unicode\n");
@@ -3687,7 +3687,7 @@ do_psetbteq(const char *param, const char *value, printQueryOpt *popt, bool quie
 			;
 		else if (set_unicode_line_style(value, vallen,
 										&popt->topt.unicode_border_linestyle))
-			refresh_utf8format(&(popt->topt));
+			refresh_utf8format_bteq(&(popt->topt));
 		else
 		{
 			psql_error("\\pset: allowed Unicode border line styles are single, double\n");
@@ -3702,7 +3702,7 @@ do_psetbteq(const char *param, const char *value, printQueryOpt *popt, bool quie
 			;
 		else if (set_unicode_line_style(value, vallen,
 										&popt->topt.unicode_column_linestyle))
-			refresh_utf8format(&(popt->topt));
+			refresh_utf8format_bteq(&(popt->topt));
 		else
 		{
 			psql_error("\\pset: allowed Unicode column line styles are single, double\n");
@@ -3717,7 +3717,7 @@ do_psetbteq(const char *param, const char *value, printQueryOpt *popt, bool quie
 			;
 		else if (set_unicode_line_style(value, vallen,
 										&popt->topt.unicode_header_linestyle))
-			refresh_utf8format(&(popt->topt));
+			refresh_utf8format_bteq(&(popt->topt));
 		else
 		{
 			psql_error("\\pset: allowed Unicode header line styles are single, double\n");
@@ -3959,7 +3959,7 @@ printPsetInfo(const char *param, struct printQueryOpt *popt)
 	else if (strcmp(param, "linestyle") == 0)
 	{
 		printf(_("Line style is %s.\n"),
-			   get_line_style(&popt->topt)->name);
+			   get_line_style_bteq(&popt->topt)->name);
 	}
 
 	/* show null display */
@@ -4141,7 +4141,7 @@ pset_value_string(const char *param, struct printQueryOpt *popt)
 	else if (strcmp(param, "format") == 0)
 		return psprintf("%s", _align2string(popt->topt.format));
 	else if (strcmp(param, "linestyle") == 0)
-		return psprintf("%s", get_line_style(&popt->topt)->name);
+		return psprintf("%s", get_line_style_bteq(&popt->topt)->name);
 	else if (strcmp(param, "null") == 0)
 		return pset_quoted_string(popt->nullPrint
 								  ? popt->nullPrint
@@ -4321,7 +4321,7 @@ do_watch(PQExpBuffer query_buf, double sleep)
 			long		s = Min(i, 1000L);
 
 			pg_usleep(s * 1000L);
-			if (cancel_pressed)
+			if (cancel_pressed_bteq)
 				break;
 			i -= s;
 		}
