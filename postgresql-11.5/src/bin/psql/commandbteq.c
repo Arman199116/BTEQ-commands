@@ -175,7 +175,7 @@ static void checkWin32Codepage(void);
  * Ordinarily called by MainLoop().
  *
  * scan_state is a lexer working state that is set to continue scanning
- * just after the '\'.  The lexer is advanced past the command and all
+ * just after the '.'.  The lexer is advanced past the command and all
  * arguments on return.
  *
  * cstack is the current \if stack state.  This will be examined, and
@@ -2680,12 +2680,12 @@ ignore_boolean_expression(PsqlScanState scan_state)
 }
 
 /*
- * Read and discard "normal" slash command options.
+ * Read and discard "normal" dot command options.
  *
  * This should be used for inactive-branch processing of any slash command
  * that eats one or more OT_NORMAL, OT_SQLID, or OT_SQLIDHACK parameters.
  * We don't need to worry about exactly how many it would eat, since the
- * cleanup logic in HandleSlashCmds would silently discard any extras anyway.
+ * cleanup logic in HandleDotCmds would silently discard any extras anyway.
  */
 static void
 ignore_slash_options(PsqlScanState scan_state)

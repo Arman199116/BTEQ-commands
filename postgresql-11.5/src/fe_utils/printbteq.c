@@ -39,7 +39,7 @@
  * If the calling program doesn't have any mechanism for setting
  * cancel_pressed_bteq, it will have no effect.
  *
- * Note: print.c's general strategy for when to check cancel_pressed_bteq is to do
+ * Note: printbteq.c's general strategy for when to check cancel_pressed_bteq is to do
  * so at completion of each row of output.
  */
 volatile bool cancel_pressed_bteq = false;

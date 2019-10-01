@@ -24,7 +24,6 @@
 
 #include "settings.h"
 #include "command.h"
-#include "commandbteq.h"
 #include "copy.h"
 #include "crosstabview.h"
 #include "fe_utils/mbprint.h"
