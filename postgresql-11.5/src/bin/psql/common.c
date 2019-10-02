@@ -887,11 +887,9 @@ PrintQueryTuples(const PGresult *results)
 			fclose(fout);
 	}
 	else { 
-		if (pset.mode == 1)
-		{
+		if (pset.mode == 1) {
 			printQuerybteq(results, &my_popt, pset.queryFout, false, pset.logfile);
 		} else {
-
 			printQuery(results, &my_popt, pset.queryFout, false, pset.logfile);
 		}
 	}
