@@ -2,7 +2,7 @@
  *
  * Query-result printing support for frontend code
  *
- * This file used to be part of psql, but now it's separated out to allow
+ * This file used to be part of bteq, but now it's separated out to allow
  * other frontend programs to use it.  Because the printing code needs
  * access to the cancel_pressed_bteq flag as well as SIGPIPE trapping and
  * pager open/close functions, all that stuff came with it.
@@ -52,7 +52,7 @@ static int	groupdigits;
 static char *thousands_sep;
 
 static char default_footer[100];
-static printTableFooter default_footer_cell = {default_footer, NULL};
+static printTableFooterBteq default_footer_cell = {default_footer, NULL};
 
 /* Line style control structures */
 const printTextFormatbteq pg_asciiformat_bteq =
@@ -198,10 +198,10 @@ static const unicodeStyleFormatbteq unicode_style_bteq = {
 
 /* Local functions */
 static int	strlen_max_width(unsigned char *str, int *target_width, int encoding);
-static void IsPagerNeeded(const printTableContent *cont, int extra_lines, bool expanded,
+static void IsPagerNeeded(const printTableContentBteq *cont, int extra_lines, bool expanded,
 			  FILE **fout, bool *is_pager);
 
-static void print_aligned_vertical(const printTableContent *cont,
+static void print_aligned_vertical(const printTableContentBteq *cont,
 					   FILE *fout, bool is_pager);
 
 
@@ -279,7 +279,7 @@ format_numeric_locale(const char *my_str)
 	/* process integer part of number */
 	for (i = 0; i < int_len; i++)
 	{
-		/* Time to insert separator? */
+		/* Time to insert separatorbteq? */
 		if (i > 0 && --leading_digits == 0)
 		{
 			strcpy(&new_str[new_str_pos], thousands_sep);
@@ -322,7 +322,7 @@ fputnbytes(FILE *f, const char *str, size_t n)
 
 
 static void
-print_separator(struct separator sep, FILE *fout)
+print_separator(struct separatorbteq sep, FILE *fout)
 {
 	if (sep.separator_zero)
 		fputc('\000', fout);
@@ -340,8 +340,8 @@ print_separator(struct separator sep, FILE *fout)
  *
  * The return value may point to static storage; do not keep it across calls.
  */
-static printTableFooter *
-footers_with_default(const printTableContent *cont)
+static printTableFooterBteq *
+footers_with_default(const printTableContentBteq *cont)
 {
 	if (cont->footers == NULL && cont->opt->default_footer)
 	{
@@ -365,7 +365,7 @@ footers_with_default(const printTableContent *cont)
 
 
 static void
-print_unaligned_text(const printTableContent *cont, FILE *fout)
+print_unaligned_text(const printTableContentBteq *cont, FILE *fout)
 {
 	bool		opt_tuples_only = cont->opt->tuples_only;
 	unsigned int i;
@@ -421,11 +421,11 @@ print_unaligned_text(const printTableContent *cont, FILE *fout)
 	/* print footers */
 	if (cont->opt->stop_table)
 	{
-		printTableFooter *footers = footers_with_default(cont);
+		printTableFooterBteq *footers = footers_with_default(cont);
 
 		if (!opt_tuples_only && footers != NULL && !cancel_pressed_bteq)
 		{
-			printTableFooter *f;
+			printTableFooterBteq *f;
 
 			for (f = footers; f; f = f->next)
 			{
@@ -441,7 +441,7 @@ print_unaligned_text(const printTableContent *cont, FILE *fout)
 
 		/*
 		 * The last record is terminated by a newline, independent of the set
-		 * record separator.  But when the record separator is a zero byte, we
+		 * record separatorbteq.  But when the record separatorbteq is a zero byte, we
 		 * use that (compatible with find -print0 and xargs).
 		 */
 		if (need_recordsep)
@@ -456,7 +456,7 @@ print_unaligned_text(const printTableContent *cont, FILE *fout)
 
 
 static void
-print_unaligned_vertical(const printTableContent *cont, FILE *fout)
+print_unaligned_vertical(const printTableContentBteq *cont, FILE *fout)
 {
 	bool		opt_tuples_only = cont->opt->tuples_only;
 	unsigned int i;
@@ -484,7 +484,7 @@ print_unaligned_vertical(const printTableContent *cont, FILE *fout)
 	{
 		if (need_recordsep)
 		{
-			/* record separator is 2 occurrences of recordsep in this mode */
+			/* record separatorbteq is 2 occurrences of recordsep in this mode */
 			print_separator(cont->opt->recordSep, fout);
 			print_separator(cont->opt->recordSep, fout);
 			need_recordsep = false;
@@ -507,7 +507,7 @@ print_unaligned_vertical(const printTableContent *cont, FILE *fout)
 		/* print footers */
 		if (!opt_tuples_only && cont->footers != NULL && !cancel_pressed_bteq)
 		{
-			printTableFooter *f;
+			printTableFooterBteq *f;
 
 			print_separator(cont->opt->recordSep, fout);
 			for (f = cont->footers; f; f = f->next)
@@ -537,11 +537,11 @@ print_unaligned_vertical(const printTableContent *cont, FILE *fout)
 /* draw "line" */
 static void
 _print_horizontal_line(const unsigned int ncolumns, const unsigned int *widths,
-					   unsigned short border, printTextRule pos,
+					   unsigned short border, printTextRuleBteq pos,
 					   const printTextFormatbteq *format,
 					   FILE *fout)
 {
-	const printTextLineFormat *lformat = &format->lrule[pos];
+	const printTextLineFormatBteq *lformat = &format->lrule[pos];
 	unsigned int i,
 				j;
 
@@ -578,14 +578,14 @@ _print_horizontal_line(const unsigned int ncolumns, const unsigned int *widths,
  *	Print pretty boxes around cells.
  */
 static void
-print_aligned_text_bteq(const printTableContent *cont, FILE *fout, bool is_pager)
+print_aligned_text_bteq(const printTableContentBteq *cont, FILE *fout, bool is_pager)
 {
 	printf("print_aligned_text_bteq\n");
 	bool		opt_tuples_only = cont->opt->tuples_only;
 	int			encoding = cont->opt->encoding;
 	unsigned short opt_border = cont->opt->border;
 	const printTextFormatbteq *format = get_line_style_bteq(cont->opt);
-	const printTextLineFormat *dformat = &format->lrule[PRINT_RULE_DATA];
+	const printTextLineFormatBteq *dformat = &format->lrule[PRINT_RULE_DATA_BTEQ];
 
 	unsigned int col_count = 0,
 				cell_count = 0;
@@ -612,7 +612,7 @@ print_aligned_text_bteq(const printTableContent *cont, FILE *fout, bool is_pager
 
 	bool	   *header_done;	/* Have all header lines been output? */
 	int		   *bytes_output;	/* Bytes output for column value */
-	printTextLineWrap *wrap;	/* Wrap status for each column */
+	printTextLineWrapBteq *wrap;	/* Wrap status for each column */
 	int			output_columns = 0; /* Width of interactive console */
 	bool		is_local_pager = false;
 
@@ -764,7 +764,7 @@ print_aligned_text_bteq(const printTableContent *cont, FILE *fout, bool is_pager
 #endif
 	}
 
-	if (cont->opt->format == PRINT_WRAPPED)
+	if (cont->opt->format == PRINT_WRAPPED_BTEQ)
 	{
 		/*
 		 * Optional optimized word wrap. Shrink columns with a high max/avg
@@ -904,7 +904,7 @@ print_aligned_text_bteq(const printTableContent *cont, FILE *fout, bool is_pager
 
 			if (opt_border == 2)
 				_print_horizontal_line(col_count, width_wrap, opt_border,
-									   PRINT_RULE_TOP, format, fout);
+									   PRINT_RULE_TOP_BTEQ, format, fout);
 
 			for (i = 0; i < col_count; i++)
 				pg_wcsformat((const unsigned char *) cont->headers[i],
@@ -961,7 +961,7 @@ print_aligned_text_bteq(const printTableContent *cont, FILE *fout, bool is_pager
 			}
 
 			_print_horizontal_line(col_count, width_wrap, opt_border,
-								   PRINT_RULE_MIDDLE, format, fout);
+								   PRINT_RULE_MIDDLE_BTEQ, format, fout);
 		}
 	}
 
@@ -1011,9 +1011,9 @@ print_aligned_text_bteq(const printTableContent *cont, FILE *fout, bool is_pager
 				/* Print left-hand wrap or newline mark */
 				if (opt_border != 0)
 				{
-					if (wrap[j] == PRINT_LINE_WRAP_WRAP)
+					if (wrap[j] == PRINT_LINE_WRAP_WRAP_BTEQ)
 						fputs(format->wrap_left, fout);
-					else if (wrap[j] == PRINT_LINE_WRAP_NEWLINE)
+					else if (wrap[j] == PRINT_LINE_WRAP_NEWLINE_BTEQ)
 						fputs(format->nl_left, fout);
 					else
 						fputc(' ', fout);
@@ -1073,13 +1073,13 @@ print_aligned_text_bteq(const printTableContent *cont, FILE *fout, bool is_pager
 				}
 
 				/* Determine next line's wrap status for this column */
-				wrap[j] = PRINT_LINE_WRAP_NONE;
+				wrap[j] = PRINT_LINE_WRAP_NONE_BTEQ;
 				if (col_lineptrs[j][curr_nl_line[j]].ptr != NULL)
 				{
 					if (bytes_output[j] != 0)
-						wrap[j] = PRINT_LINE_WRAP_WRAP;
+						wrap[j] = PRINT_LINE_WRAP_WRAP_BTEQ;
 					else if (curr_nl_line[j] != 0)
-						wrap[j] = PRINT_LINE_WRAP_NEWLINE;
+						wrap[j] = PRINT_LINE_WRAP_NEWLINE_BTEQ;
 				}
 
 				/*
@@ -1089,16 +1089,16 @@ print_aligned_text_bteq(const printTableContent *cont, FILE *fout, bool is_pager
 				if (cont->aligns[j] != 'r') /* Left aligned cell */
 				{
 					if (finalspaces ||
-						wrap[j] == PRINT_LINE_WRAP_WRAP ||
-						wrap[j] == PRINT_LINE_WRAP_NEWLINE)
+						wrap[j] == PRINT_LINE_WRAP_WRAP_BTEQ ||
+						wrap[j] == PRINT_LINE_WRAP_NEWLINE_BTEQ)
 						fprintf(fout, "%*s",
 								width_wrap[j] - chars_to_output, "");
 				}
 
 				/* Print right-hand wrap or newline mark */
-				if (wrap[j] == PRINT_LINE_WRAP_WRAP)
+				if (wrap[j] == PRINT_LINE_WRAP_WRAP_BTEQ)
 					fputs(format->wrap_right, fout);
-				else if (wrap[j] == PRINT_LINE_WRAP_NEWLINE)
+				else if (wrap[j] == PRINT_LINE_WRAP_NEWLINE_BTEQ)
 					fputs(format->nl_right, fout);
 				else if (opt_border == 2 || (col_count > 0 && j < col_count - 1))
 					fputc(' ', fout);
@@ -1106,9 +1106,9 @@ print_aligned_text_bteq(const printTableContent *cont, FILE *fout, bool is_pager
 				/* Print column divider, if not the last column */
 				if (opt_border != 0 && (col_count > 0 && j < col_count - 1))
 				{
-					if (wrap[j + 1] == PRINT_LINE_WRAP_WRAP)
+					if (wrap[j + 1] == PRINT_LINE_WRAP_WRAP_BTEQ)
 						fputs(format->midvrule_wrap, fout);
-					else if (wrap[j + 1] == PRINT_LINE_WRAP_NEWLINE)
+					else if (wrap[j + 1] == PRINT_LINE_WRAP_NEWLINE_BTEQ)
 						fputs(format->midvrule_nl, fout);
 					else if (col_lineptrs[j + 1][curr_nl_line[j + 1]].ptr == NULL)
 						fputs(format->midvrule_blank, fout);
@@ -1127,16 +1127,16 @@ print_aligned_text_bteq(const printTableContent *cont, FILE *fout, bool is_pager
 
 	if (cont->opt->stop_table)
 	{
-		printTableFooter *footers = footers_with_default(cont);
+		printTableFooterBteq *footers = footers_with_default(cont);
 
 		if (opt_border == 2 && !cancel_pressed_bteq)
 			_print_horizontal_line(col_count, width_wrap, opt_border,
-								   PRINT_RULE_BOTTOM, format, fout);
+								   PRINT_RULE_BOTTOM_BTEQ, format, fout);
 
 		/* print footers */
 		if (footers && !opt_tuples_only && !cancel_pressed_bteq)
 		{
-			printTableFooter *f;
+			printTableFooterBteq *f;
 
 			for (f = footers; f; f = f->next)
 				fprintf(fout, "%s\n", f->data);
@@ -1176,10 +1176,10 @@ print_aligned_vertical_line(const printTextFormatbteq *format,
 							unsigned long record,
 							unsigned int hwidth,
 							unsigned int dwidth,
-							printTextRule pos,
+							printTextRuleBteq pos,
 							FILE *fout)
 {
-	const printTextLineFormat *lformat = &format->lrule[pos];
+	const printTextLineFormatBteq *lformat = &format->lrule[pos];
 	unsigned int i;
 	int			reclen = 0;
 
@@ -1227,13 +1227,13 @@ print_aligned_vertical_line(const printTextFormatbteq *format,
 }
 
 static void
-print_aligned_vertical(const printTableContent *cont,
+print_aligned_vertical(const printTableContentBteq *cont,
 					   FILE *fout, bool is_pager)
 {
 	bool		opt_tuples_only = cont->opt->tuples_only;
 	unsigned short opt_border = cont->opt->border;
 	const printTextFormatbteq *format = get_line_style_bteq(cont->opt);
-	const printTextLineFormat *dformat = &format->lrule[PRINT_RULE_DATA];
+	const printTextLineFormatBteq *dformat = &format->lrule[PRINT_RULE_DATA_BTEQ];
 	int			encoding = cont->opt->encoding;
 	unsigned long record = cont->opt->prior_records + 1;
 	const char *const *ptr;
@@ -1260,11 +1260,11 @@ print_aligned_vertical(const printTableContent *cont,
 	if (cont->cells[0] == NULL && cont->opt->start_table &&
 		cont->opt->stop_table)
 	{
-		printTableFooter *footers = footers_with_default(cont);
+		printTableFooterBteq *footers = footers_with_default(cont);
 
 		if (!opt_tuples_only && !cancel_pressed_bteq && footers)
 		{
-			printTableFooter *f;
+			printTableFooterBteq *f;
 
 			for (f = footers; f; f = f->next)
 				fprintf(fout, "%s\n", f->data);
@@ -1366,7 +1366,7 @@ print_aligned_vertical(const printTableContent *cont,
 	/*
 	 * Calculate available width for data in wrapped mode
 	 */
-	if (cont->opt->format == PRINT_WRAPPED)
+	if (cont->opt->format == PRINT_WRAPPED_BTEQ)
 	{
 		unsigned int swidth,
 					rwidth = 0,
@@ -1492,7 +1492,7 @@ print_aligned_vertical(const printTableContent *cont,
 	/* print records */
 	for (i = 0, ptr = cont->cells; *ptr; i++, ptr++)
 	{
-		printTextRule pos;
+		printTextRuleBteq pos;
 		int			dline,
 					hline,
 					dcomplete,
@@ -1504,9 +1504,9 @@ print_aligned_vertical(const printTableContent *cont,
 			break;
 
 		if (i == 0)
-			pos = PRINT_RULE_TOP;
+			pos = PRINT_RULE_TOP_BTEQ;
 		else
-			pos = PRINT_RULE_MIDDLE;
+			pos = PRINT_RULE_MIDDLE_BTEQ;
 
 		/* Print record header (e.g. "[ RECORD N ]") above each record */
 		if (i % cont->ncolumns == 0)
@@ -1576,7 +1576,7 @@ print_aligned_vertical(const printTableContent *cont,
 					fprintf(fout, "%*s", swidth, " ");
 
 				/*
-				 * New line indicator or separator's space
+				 * New line indicator or separatorbteq's space
 				 */
 				if (hlineptr[hline + 1].ptr)
 				{
@@ -1710,12 +1710,12 @@ print_aligned_vertical(const printTableContent *cont,
 	{
 		if (opt_border == 2 && !cancel_pressed_bteq)
 			print_aligned_vertical_line(format, opt_border, 0, hwidth, dwidth,
-										PRINT_RULE_BOTTOM, fout);
+										PRINT_RULE_BOTTOM_BTEQ, fout);
 
 		/* print footers */
 		if (!opt_tuples_only && cont->footers != NULL && !cancel_pressed_bteq)
 		{
-			printTableFooter *f;
+			printTableFooterBteq *f;
 
 			if (opt_border < 2)
 				fputc('\n', fout);
@@ -1783,7 +1783,7 @@ html_escaped_print_bteq(const char *in, FILE *fout)
 
 
 static void
-print_html_text(const printTableContent *cont, FILE *fout)
+print_html_text(const printTableContentBteq *cont, FILE *fout)
 {
 	bool		opt_tuples_only = cont->opt->tuples_only;
 	unsigned short opt_border = cont->opt->border;
@@ -1848,14 +1848,14 @@ print_html_text(const printTableContent *cont, FILE *fout)
 
 	if (cont->opt->stop_table)
 	{
-		printTableFooter *footers = footers_with_default(cont);
+		printTableFooterBteq *footers = footers_with_default(cont);
 
 		fputs("</table>\n", fout);
 
 		/* print footers */
 		if (!opt_tuples_only && footers != NULL && !cancel_pressed_bteq)
 		{
-			printTableFooter *f;
+			printTableFooterBteq *f;
 
 			fputs("<p>", fout);
 			for (f = footers; f; f = f->next)
@@ -1872,7 +1872,7 @@ print_html_text(const printTableContent *cont, FILE *fout)
 
 
 static void
-print_html_vertical(const printTableContent *cont, FILE *fout)
+print_html_vertical(const printTableContentBteq *cont, FILE *fout)
 {
 	bool		opt_tuples_only = cont->opt->tuples_only;
 	unsigned short opt_border = cont->opt->border;
@@ -1936,7 +1936,7 @@ print_html_vertical(const printTableContent *cont, FILE *fout)
 		/* print footers */
 		if (!opt_tuples_only && cont->footers != NULL && !cancel_pressed_bteq)
 		{
-			printTableFooter *f;
+			printTableFooterBteq *f;
 
 			fputs("<p>", fout);
 			for (f = cont->footers; f; f = f->next)
@@ -1975,7 +1975,7 @@ asciidoc_escaped_print(const char *in, FILE *fout)
 }
 
 static void
-print_asciidoc_text(const printTableContent *cont, FILE *fout)
+print_asciidoc_text(const printTableContentBteq *cont, FILE *fout)
 {
 	bool		opt_tuples_only = cont->opt->tuples_only;
 	unsigned short opt_border = cont->opt->border;
@@ -2066,12 +2066,12 @@ print_asciidoc_text(const printTableContent *cont, FILE *fout)
 
 	if (cont->opt->stop_table)
 	{
-		printTableFooter *footers = footers_with_default(cont);
+		printTableFooterBteq *footers = footers_with_default(cont);
 
 		/* print footers */
 		if (!opt_tuples_only && footers != NULL && !cancel_pressed_bteq)
 		{
-			printTableFooter *f;
+			printTableFooterBteq *f;
 
 			fputs("\n....\n", fout);
 			for (f = footers; f; f = f->next)
@@ -2085,7 +2085,7 @@ print_asciidoc_text(const printTableContent *cont, FILE *fout)
 }
 
 static void
-print_asciidoc_vertical(const printTableContent *cont, FILE *fout)
+print_asciidoc_vertical(const printTableContentBteq *cont, FILE *fout)
 {
 	bool		opt_tuples_only = cont->opt->tuples_only;
 	unsigned short opt_border = cont->opt->border;
@@ -2161,7 +2161,7 @@ print_asciidoc_vertical(const printTableContent *cont, FILE *fout)
 		/* print footers */
 		if (!opt_tuples_only && cont->footers != NULL && !cancel_pressed_bteq)
 		{
-			printTableFooter *f;
+			printTableFooterBteq *f;
 
 			fputs("\n....\n", fout);
 			for (f = cont->footers; f; f = f->next)
@@ -2242,7 +2242,7 @@ latex_escaped_print(const char *in, FILE *fout)
 
 
 static void
-print_latex_text(const printTableContent *cont, FILE *fout)
+print_latex_text(const printTableContentBteq *cont, FILE *fout)
 {
 	bool		opt_tuples_only = cont->opt->tuples_only;
 	unsigned short opt_border = cont->opt->border;
@@ -2319,7 +2319,7 @@ print_latex_text(const printTableContent *cont, FILE *fout)
 
 	if (cont->opt->stop_table)
 	{
-		printTableFooter *footers = footers_with_default(cont);
+		printTableFooterBteq *footers = footers_with_default(cont);
 
 		if (opt_border == 2)
 			fputs("\\hline\n", fout);
@@ -2329,7 +2329,7 @@ print_latex_text(const printTableContent *cont, FILE *fout)
 		/* print footers */
 		if (footers && !opt_tuples_only && !cancel_pressed_bteq)
 		{
-			printTableFooter *f;
+			printTableFooterBteq *f;
 
 			for (f = footers; f; f = f->next)
 			{
@@ -2344,7 +2344,7 @@ print_latex_text(const printTableContent *cont, FILE *fout)
 
 
 static void
-print_latex_longtable_text(const printTableContent *cont, FILE *fout)
+print_latex_longtable_text(const printTableContentBteq *cont, FILE *fout)
 {
 	bool		opt_tuples_only = cont->opt->tuples_only;
 	unsigned short opt_border = cont->opt->border;
@@ -2500,7 +2500,7 @@ print_latex_longtable_text(const printTableContent *cont, FILE *fout)
 
 
 static void
-print_latex_vertical(const printTableContent *cont, FILE *fout)
+print_latex_vertical(const printTableContentBteq *cont, FILE *fout)
 {
 	bool		opt_tuples_only = cont->opt->tuples_only;
 	unsigned short opt_border = cont->opt->border;
@@ -2573,7 +2573,7 @@ print_latex_vertical(const printTableContent *cont, FILE *fout)
 		/* print footers */
 		if (cont->footers && !opt_tuples_only && !cancel_pressed_bteq)
 		{
-			printTableFooter *f;
+			printTableFooterBteq *f;
 
 			for (f = cont->footers; f; f = f->next)
 			{
@@ -2610,7 +2610,7 @@ troff_ms_escaped_print(const char *in, FILE *fout)
 
 
 static void
-print_troff_ms_text(const printTableContent *cont, FILE *fout)
+print_troff_ms_text(const printTableContentBteq *cont, FILE *fout)
 {
 	bool		opt_tuples_only = cont->opt->tuples_only;
 	unsigned short opt_border = cont->opt->border;
@@ -2680,14 +2680,14 @@ print_troff_ms_text(const printTableContent *cont, FILE *fout)
 
 	if (cont->opt->stop_table)
 	{
-		printTableFooter *footers = footers_with_default(cont);
+		printTableFooterBteq *footers = footers_with_default(cont);
 
 		fputs(".TE\n.DS L\n", fout);
 
 		/* print footers */
 		if (footers && !opt_tuples_only && !cancel_pressed_bteq)
 		{
-			printTableFooter *f;
+			printTableFooterBteq *f;
 
 			for (f = footers; f; f = f->next)
 			{
@@ -2702,7 +2702,7 @@ print_troff_ms_text(const printTableContent *cont, FILE *fout)
 
 
 static void
-print_troff_ms_vertical(const printTableContent *cont, FILE *fout)
+print_troff_ms_vertical(const printTableContentBteq *cont, FILE *fout)
 {
 	bool		opt_tuples_only = cont->opt->tuples_only;
 	unsigned short opt_border = cont->opt->border;
@@ -2794,7 +2794,7 @@ print_troff_ms_vertical(const printTableContent *cont, FILE *fout)
 		/* print footers */
 		if (cont->footers && !opt_tuples_only && !cancel_pressed_bteq)
 		{
-			printTableFooter *f;
+			printTableFooterBteq *f;
 
 			for (f = cont->footers; f; f = f->next)
 			{
@@ -2835,12 +2835,12 @@ disable_sigpipe_trap_bteq(void)
  * Restore normal SIGPIPE interrupt --- call this when done writing to a
  * temporary query output file that was (or might have been) a pipe.
  *
- * Note: within psql, we enable SIGPIPE interrupts unless the permanent query
+ * Note: within bteq, we enable SIGPIPE interrupts unless the permanent query
  * output file is a pipe, in which case they should be kept off.  This
- * approach works only because psql is not currently complicated enough to
+ * approach works only because bteq is not currently complicated enough to
  * have nested usages of short-lived output files.  Otherwise we'd probably
  * need a genuine save-and-restore-state approach; but for now, that would be
- * useless complication.  In non-psql programs, this always enables SIGPIPE.
+ * useless complication.  In non-bteq programs, this always enables SIGPIPE.
  *
  * No-op on Windows, where there's no SIGPIPE interrupts.
  */
@@ -2872,7 +2872,7 @@ set_sigpipe_trap_state_bteq(bool ignore)
  * If the topt argument is NULL no pager is used.
  */
 FILE *
-PageOutputbteq(int lines, const printTableOpt *topt)
+PageOutputbteq(int lines, const printTableOptBteq *topt)
 {
 	/* check whether we need / can / are supposed to use pager */
 	if (topt && topt->pager && isatty(fileno(stdin)) && isatty(fileno(stdout)))
@@ -2948,13 +2948,13 @@ ClosePagerbteq(FILE *pagerpipe)
  *		Must be called before any other printTablebteq method is used.
  *
  * The title is not duplicated; the caller must ensure that the buffer
- * is available for the lifetime of the printTableContent struct.
+ * is available for the lifetime of the printTableContentBteq struct.
  *
  * If you call this, you must call printTableCleanupbteq once you're done with the
  * table.
  */
 void
-printTableInitbteq(printTableContent *const content, const printTableOpt *opt,
+printTableInitbteq(printTableContentBteq *const content, const printTableOptBteq *opt,
 			   const char *title, const int ncolumns, const int nrows)
 {
 	content->opt = opt;
@@ -2982,7 +2982,7 @@ printTableInitbteq(printTableContent *const content, const printTableOpt *opt,
  * Add a header to the table.
  *
  * Headers are not duplicated; you must ensure that the header string is
- * available for the lifetime of the printTableContent struct.
+ * available for the lifetime of the printTableContentBteq struct.
  *
  * If translate is true, the function will pass the header through gettext.
  * Otherwise, the header will not be translated.
@@ -2991,7 +2991,7 @@ printTableInitbteq(printTableContent *const content, const printTableOpt *opt,
  * column.
  */
 void
-printTableAddHeaderbteq(printTableContent *const content, char *header,
+printTableAddHeaderbteq(printTableContentBteq *const content, char *header,
 					const bool translate, const char align)
 {
 #ifndef ENABLE_NLS
@@ -3022,7 +3022,7 @@ printTableAddHeaderbteq(printTableContent *const content, char *header,
  * Add a cell to the table.
  *
  * Cells are not duplicated; you must ensure that the cell string is available
- * for the lifetime of the printTableContent struct.
+ * for the lifetime of the printTableContentBteq struct.
  *
  * If translate is true, the function will pass the cell through gettext.
  * Otherwise, the cell will not be translated.
@@ -3031,7 +3031,7 @@ printTableAddHeaderbteq(printTableContent *const content, char *header,
  * Note: Automatic freeing of translatable strings is not supported.
  */
 void
-printTableAddCellbteq(printTableContent *const content, char *cell,
+printTableAddCellbteq(printTableContentBteq *const content, char *cell,
 				  const bool translate, const bool mustfree)
 {
 #ifndef ENABLE_NLS
@@ -3079,9 +3079,9 @@ printTableAddCellbteq(printTableContent *const content, char *cell,
  * translated as a whole.
  */
 void
-printTableAddFooterbteq(printTableContent *const content, const char *footer)
+printTableAddFooterbteq(printTableContentBteq *const content, const char *footer)
 {
-	printTableFooter *f;
+	printTableFooterBteq *f;
 
 	f = pg_malloc0(sizeof(*f));
 	f->data = pg_strdup(footer);
@@ -3104,7 +3104,7 @@ printTableAddFooterbteq(printTableContent *const content, const char *footer)
  * around.
  */
 void
-printTableSetFooterbteq(printTableContent *const content, const char *footer)
+printTableSetFooterbteq(printTableContentBteq *const content, const char *footer)
 {
 	if (content->footers != NULL)
 	{
@@ -3122,7 +3122,7 @@ printTableSetFooterbteq(printTableContent *const content, const char *footer)
  * printTableInitbteq() again.
  */
 void
-printTableCleanupbteq(printTableContent *const content)
+printTableCleanupbteq(printTableContentBteq *const content)
 {
 	if (content->cellmustfree)
 	{
@@ -3153,7 +3153,7 @@ printTableCleanupbteq(printTableContent *const content)
 	{
 		for (content->footer = content->footers; content->footer;)
 		{
-			printTableFooter *f;
+			printTableFooterBteq *f;
 
 			f = content->footer;
 			content->footer = f->next;
@@ -3171,7 +3171,7 @@ printTableCleanupbteq(printTableContent *const content)
  * Setup pager if required
  */
 static void
-IsPagerNeeded(const printTableContent *cont, int extra_lines, bool expanded,
+IsPagerNeeded(const printTableContentBteq *cont, int extra_lines, bool expanded,
 			  FILE **fout, bool *is_pager)
 {
 	if (*fout == stdout)
@@ -3185,7 +3185,7 @@ IsPagerNeeded(const printTableContent *cont, int extra_lines, bool expanded,
 
 		if (!cont->opt->tuples_only)
 		{
-			printTableFooter *f;
+			printTableFooterBteq *f;
 
 			/*
 			 * FIXME -- this is slightly bogus: it counts the number of
@@ -3211,7 +3211,7 @@ IsPagerNeeded(const printTableContent *cont, int extra_lines, bool expanded,
  * flog: if not null, also print the table there (for --log-file option)
  */
 void
-printTablebteq(const printTableContent *cont,
+printTablebteq(const printTableContentBteq *cont,
 		   FILE *fout, bool is_pager, FILE *flog)
 {
 	bool		is_local_pager = false;
@@ -3219,13 +3219,13 @@ printTablebteq(const printTableContent *cont,
 	if (cancel_pressed_bteq)
 		return;
 
-	if (cont->opt->format == PRINT_NOTHING)
+	if (cont->opt->format == PRINT_NOTHING_BTEQ)
 		return;
 
 	/* print_aligned_*() handle the pager themselves */
 	if (!is_pager &&
-		cont->opt->format != PRINT_ALIGNED &&
-		cont->opt->format != PRINT_WRAPPED)
+		cont->opt->format != PRINT_ALIGNED_BTEQ &&
+		cont->opt->format != PRINT_WRAPPED_BTEQ)
 	{
 		IsPagerNeeded(cont, 0, (cont->opt->expanded == 1), &fout, &is_pager);
 		is_local_pager = is_pager;
@@ -3238,14 +3238,14 @@ printTablebteq(const printTableContent *cont,
 
 	switch (cont->opt->format)
 	{
-		case PRINT_UNALIGNED:
+		case PRINT_UNALIGNED_BTEQ:
 			if (cont->opt->expanded == 1)
 				print_unaligned_vertical(cont, fout);
 			else
 				print_unaligned_text(cont, fout);
 			break;
-		case PRINT_ALIGNED:
-		case PRINT_WRAPPED:
+		case PRINT_ALIGNED_BTEQ:
+		case PRINT_WRAPPED_BTEQ:
 
 			/*
 			 * In expanded-auto mode, force vertical if a pager is passed in;
@@ -3258,31 +3258,31 @@ printTablebteq(const printTableContent *cont,
 			else
 				print_aligned_text_bteq(cont, fout, is_pager);
 			break;
-		case PRINT_HTML:
+		case PRINT_HTML_BTEQ:
 			if (cont->opt->expanded == 1)
 				print_html_vertical(cont, fout);
 			else
 				print_html_text(cont, fout);
 			break;
-		case PRINT_ASCIIDOC:
+		case PRINT_ASCIIDOC_BTEQ:
 			if (cont->opt->expanded == 1)
 				print_asciidoc_vertical(cont, fout);
 			else
 				print_asciidoc_text(cont, fout);
 			break;
-		case PRINT_LATEX:
+		case PRINT_LATEX_BTEQ:
 			if (cont->opt->expanded == 1)
 				print_latex_vertical(cont, fout);
 			else
 				print_latex_text(cont, fout);
 			break;
-		case PRINT_LATEX_LONGTABLE:
+		case PRINT_LATEX_LONGTABLE_BTEQ:
 			if (cont->opt->expanded == 1)
 				print_latex_vertical(cont, fout);
 			else
 				print_latex_longtable_text(cont, fout);
 			break;
-		case PRINT_TROFF_MS:
+		case PRINT_TROFF_MS_BTEQ:
 			if (cont->opt->expanded == 1)
 				print_troff_ms_vertical(cont, fout);
 			else
@@ -3308,11 +3308,11 @@ printTablebteq(const printTableContent *cont,
  * flog: if not null, also print the data there (for --log-file option)
  */
 void
-printQuerybteq(const PGresult *result, const printQueryOpt *opt,
+printQuerybteq(const PGresult *result, const printQueryOptBteq *opt,
 		   FILE *fout, bool is_pager, FILE *flog)
 {
 	printf("printbteq.c\n");
-	printTableContent cont;
+	printTableContentBteq cont;
 	int			i,
 				r,
 				c;
@@ -3427,7 +3427,7 @@ setDecimalLocalebteq(void)
 	/* similar code exists in formatting.c */
 	if (*extlconv->thousands_sep)
 		thousands_sep = pg_strdup(extlconv->thousands_sep);
-	/* Make sure thousands separator doesn't match decimal point symbol. */
+	/* Make sure thousands separatorbteq doesn't match decimal point symbol. */
 	else if (strcmp(decimal_point, ",") != 0)
 		thousands_sep = ",";
 	else
@@ -3436,11 +3436,11 @@ setDecimalLocalebteq(void)
 
 /* get selected or default line style */
 const printTextFormatbteq *
-get_line_style_bteq(const printTableOpt *opt)
+get_line_style_bteq(const printTableOptBteq *opt)
 {
 	/*
 	 * Note: this function mainly exists to preserve the convention that a
-	 * printTableOpt struct can be initialized to zeroes to get default
+	 * printTableOptBteq struct can be initialized to zeroes to get default
 	 * behavior.
 	 */
 	if (opt->line_style != NULL)
@@ -3450,7 +3450,7 @@ get_line_style_bteq(const printTableOpt *opt)
 }
 
 void
-refresh_utf8format_bteq(const printTableOpt *opt)
+refresh_utf8format_bteq(const printTableOptBteq *opt)
 {
 	printTextFormatbteq *popt = &pg_utf8format_bteq;
 
@@ -3464,26 +3464,26 @@ refresh_utf8format_bteq(const printTableOpt *opt)
 	header = &unicode_style_bteq.row_style[opt->unicode_header_linestyle];
 	column = &unicode_style_bteq.column_style[opt->unicode_column_linestyle];
 
-	popt->lrule[PRINT_RULE_TOP].hrule = border->horizontal;
-	popt->lrule[PRINT_RULE_TOP].leftvrule = border->down_and_right;
-	popt->lrule[PRINT_RULE_TOP].midvrule = column->down_and_horizontal[opt->unicode_border_linestyle];
-	popt->lrule[PRINT_RULE_TOP].rightvrule = border->down_and_left;
+	popt->lrule[PRINT_RULE_TOP_BTEQ].hrule = border->horizontal;
+	popt->lrule[PRINT_RULE_TOP_BTEQ].leftvrule = border->down_and_right;
+	popt->lrule[PRINT_RULE_TOP_BTEQ].midvrule = column->down_and_horizontal[opt->unicode_border_linestyle];
+	popt->lrule[PRINT_RULE_TOP_BTEQ].rightvrule = border->down_and_left;
 
-	popt->lrule[PRINT_RULE_MIDDLE].hrule = header->horizontal;
-	popt->lrule[PRINT_RULE_MIDDLE].leftvrule = header->vertical_and_right[opt->unicode_border_linestyle];
-	popt->lrule[PRINT_RULE_MIDDLE].midvrule = column->vertical_and_horizontal[opt->unicode_header_linestyle];
-	popt->lrule[PRINT_RULE_MIDDLE].rightvrule = header->vertical_and_left[opt->unicode_border_linestyle];
+	popt->lrule[PRINT_RULE_MIDDLE_BTEQ].hrule = header->horizontal;
+	popt->lrule[PRINT_RULE_MIDDLE_BTEQ].leftvrule = header->vertical_and_right[opt->unicode_border_linestyle];
+	popt->lrule[PRINT_RULE_MIDDLE_BTEQ].midvrule = column->vertical_and_horizontal[opt->unicode_header_linestyle];
+	popt->lrule[PRINT_RULE_MIDDLE_BTEQ].rightvrule = header->vertical_and_left[opt->unicode_border_linestyle];
 
-	popt->lrule[PRINT_RULE_BOTTOM].hrule = border->horizontal;
-	popt->lrule[PRINT_RULE_BOTTOM].leftvrule = border->up_and_right;
-	popt->lrule[PRINT_RULE_BOTTOM].midvrule = column->up_and_horizontal[opt->unicode_border_linestyle];
-	popt->lrule[PRINT_RULE_BOTTOM].rightvrule = border->left_and_right;
+	popt->lrule[PRINT_RULE_BOTTOM_BTEQ].hrule = border->horizontal;
+	popt->lrule[PRINT_RULE_BOTTOM_BTEQ].leftvrule = border->up_and_right;
+	popt->lrule[PRINT_RULE_BOTTOM_BTEQ].midvrule = column->up_and_horizontal[opt->unicode_border_linestyle];
+	popt->lrule[PRINT_RULE_BOTTOM_BTEQ].rightvrule = border->left_and_right;
 
 	/* N/A */
-	popt->lrule[PRINT_RULE_DATA].hrule = "";
-	popt->lrule[PRINT_RULE_DATA].leftvrule = border->vertical;
-	popt->lrule[PRINT_RULE_DATA].midvrule = column->vertical;
-	popt->lrule[PRINT_RULE_DATA].rightvrule = border->vertical;
+	popt->lrule[PRINT_RULE_DATA_BTEQ].hrule = "";
+	popt->lrule[PRINT_RULE_DATA_BTEQ].leftvrule = border->vertical;
+	popt->lrule[PRINT_RULE_DATA_BTEQ].midvrule = column->vertical;
+	popt->lrule[PRINT_RULE_DATA_BTEQ].rightvrule = border->vertical;
 
 	popt->midvrule_nl = column->vertical;
 	popt->midvrule_wrap = column->vertical;

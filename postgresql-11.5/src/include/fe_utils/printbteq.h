@@ -10,8 +10,8 @@
  *
  *-------------------------------------------------------------------------
  */
-#ifndef PRINT_H
-#define PRINT_H
+#ifndef PRINT_BTEQ_H
+#define PRINT_BTEQ_H
 
 #include "libpq-fe.h"
 
@@ -23,51 +23,51 @@
 #define DEFAULT_PAGER "less"
 #endif
 
-enum printFormat
+enum printFormatBteq
 {
-	PRINT_NOTHING = 0,			/* to make sure someone initializes this */
-	PRINT_UNALIGNED,
-	PRINT_ALIGNED,
-	PRINT_WRAPPED,
-	PRINT_HTML,
-	PRINT_ASCIIDOC,
-	PRINT_LATEX,
-	PRINT_LATEX_LONGTABLE,
-	PRINT_TROFF_MS
+	PRINT_NOTHING_BTEQ = 0,			/* to make sure someone initializes this */
+	PRINT_UNALIGNED_BTEQ,
+	PRINT_ALIGNED_BTEQ,
+	PRINT_WRAPPED_BTEQ,
+	PRINT_HTML_BTEQ,
+	PRINT_ASCIIDOC_BTEQ,
+	PRINT_LATEX_BTEQ,
+	PRINT_LATEX_LONGTABLE_BTEQ,
+	PRINT_TROFF_MS_BTEQ
 	/* add your favourite output format here ... */
 };
 
-typedef struct printTextLineFormat
+typedef struct printTextLineFormatBteq
 {
 	/* Line drawing characters to be used in various contexts */
 	const char *hrule;			/* horizontal line character */
 	const char *leftvrule;		/* left vertical line (+horizontal) */
 	const char *midvrule;		/* intra-column vertical line (+horizontal) */
 	const char *rightvrule;		/* right vertical line (+horizontal) */
-} printTextLineFormat;
+} printTextLineFormatBteq;
 
-typedef enum printTextRule
+typedef enum printTextRuleBteq
 {
 	/* Additional context for selecting line drawing characters */
-	PRINT_RULE_TOP,				/* top horizontal line */
-	PRINT_RULE_MIDDLE,			/* intra-data horizontal line */
-	PRINT_RULE_BOTTOM,			/* bottom horizontal line */
-	PRINT_RULE_DATA				/* data line (hrule is unused here) */
-} printTextRule;
+	PRINT_RULE_TOP_BTEQ,				/* top horizontal line */
+	PRINT_RULE_MIDDLE_BTEQ,			/* intra-data horizontal line */
+	PRINT_RULE_BOTTOM_BTEQ,			/* bottom horizontal line */
+	PRINT_RULE_DATA_BTEQ				/* data line (hrule is unused here) */
+} printTextRuleBteq;
 
-typedef enum printTextLineWrap
+typedef enum printTextLineWrapBteq
 {
 	/* Line wrapping conditions */
-	PRINT_LINE_WRAP_NONE,		/* No wrapping */
-	PRINT_LINE_WRAP_WRAP,		/* Wraparound due to overlength line */
-	PRINT_LINE_WRAP_NEWLINE		/* Newline in data */
-} printTextLineWrap;
+	PRINT_LINE_WRAP_NONE_BTEQ,		/* No wrapping */
+	PRINT_LINE_WRAP_WRAP_BTEQ,		/* Wraparound due to overlength line */
+	PRINT_LINE_WRAP_NEWLINE_BTEQ		/* Newline in data */
+} printTextLineWrapBteq;
 
 typedef struct printTextFormatbteq
 {
 	/* A complete line style */
 	const char *name;			/* for display purposes */
-	printTextLineFormat lrule[4];	/* indexed by enum printTextRule */
+	printTextLineFormatBteq lrule[4];	/* indexed by enum printTextRuleBteq */
 	const char *midvrule_nl;	/* vertical line for continue after newline */
 	const char *midvrule_wrap;	/* vertical line for wrapped data */
 	const char *midvrule_blank; /* vertical line for blank data */
@@ -81,21 +81,21 @@ typedef struct printTextFormatbteq
 									 * when border=0? */
 } printTextFormatbteq;
 
-typedef enum unicode_linestyle
+typedef enum unicode_linestyle_bteq
 {
-	UNICODE_LINESTYLE_SINGLE = 0,
-	UNICODE_LINESTYLE_DOUBLE
-} unicode_linestyle;
+	UNICODE_LINESTYLE_SINGLE_BTEQ = 0,
+	UNICODE_LINESTYLE_DOUBLE_BTEQ
+} unicode_linestyle_bteq;
 
-struct separator
+struct separatorbteq
 {
 	char	   *separator;
 	bool		separator_zero;
 };
 
-typedef struct printTableOpt
+typedef struct printTableOptBteq
 {
-	enum printFormat format;	/* see enum above */
+	enum printFormatBteq format;	/* see enum above */
 	unsigned short int expanded;	/* expanded/vertical output (if supported
 									 * by output format); 0=no, 1=yes, 2=auto */
 	unsigned short int border;	/* Print a border around the table. 0=none,
@@ -110,39 +110,39 @@ typedef struct printTableOpt
 	bool		default_footer; /* allow "(xx rows)" default footer */
 	unsigned long prior_records;	/* start offset for record counters */
 	const printTextFormatbteq *line_style;	/* line style (NULL for default) */
-	struct separator fieldSep;	/* field separator for unaligned text mode */
-	struct separator recordSep; /* record separator for unaligned text mode */
-	bool		numericLocale;	/* locale-aware numeric units separator and
+	struct separatorbteq fieldSep;	/* field separatorbteq for unaligned text mode */
+	struct separatorbteq recordSep; /* record separatorbteq for unaligned text mode */
+	bool		numericLocale;	/* locale-aware numeric units separatorbteq and
 								 * decimal marker */
 	char	   *tableAttr;		/* attributes for HTML <table ...> */
 	int			encoding;		/* character encoding */
-	int			env_columns;	/* $COLUMNS on psql start, 0 is unset */
+	int			env_columns;	/* $COLUMNS on bteq start, 0 is unset */
 	int			columns;		/* target width for wrapped format */
-	unicode_linestyle unicode_border_linestyle;
-	unicode_linestyle unicode_column_linestyle;
-	unicode_linestyle unicode_header_linestyle;
-} printTableOpt;
+	unicode_linestyle_bteq unicode_border_linestyle;
+	unicode_linestyle_bteq unicode_column_linestyle;
+	unicode_linestyle_bteq unicode_header_linestyle;
+} printTableOptBteq;
 
 /*
  * Table footers are implemented as a singly-linked list.
  *
  * This is so that you don't need to know the number of footers in order to
- * initialise the printTableContent struct, which is very convenient when
+ * initialise the printTableContentBteq struct, which is very convenient when
  * preparing complex footers (as in describeOneTableDetails).
  */
-typedef struct printTableFooter
+typedef struct printTableFooterBteq
 {
 	char	   *data;
-	struct printTableFooter *next;
-} printTableFooter;
+	struct printTableFooterBteq *next;
+} printTableFooterBteq;
 
 /*
  * The table content struct holds all the information which will be displayed
  * by printTablebteq().
  */
-typedef struct printTableContent
+typedef struct printTableContentBteq
 {
-	const printTableOpt *opt;
+	const printTableOptBteq *opt;
 	const char *title;			/* May be NULL */
 	int			ncolumns;		/* Specified in Init() */
 	int			nrows;			/* Specified in Init() */
@@ -153,16 +153,16 @@ typedef struct printTableContent
 	const char **cell;			/* Pointer to the last added cell */
 	long		cellsadded;		/* Number of cells added this far */
 	bool	   *cellmustfree;	/* true for cells that need to be free()d */
-	printTableFooter *footers;	/* Pointer to the first footer */
-	printTableFooter *footer;	/* Pointer to the last added footer */
+	printTableFooterBteq *footers;	/* Pointer to the first footer */
+	printTableFooterBteq *footer;	/* Pointer to the last added footer */
 	char	   *aligns;			/* Array of alignment specifiers; 'l' or 'r',
 								 * one per column */
 	char	   *align;			/* Pointer to the last added alignment */
-} printTableContent;
+} printTableContentBteq;
 
-typedef struct printQueryOpt
+typedef struct printQueryOptBteq
 {
-	printTableOpt topt;			/* the options above */
+	printTableOptBteq topt;			/* the options above */
 	char	   *nullPrint;		/* how to print null entities */
 	char	   *title;			/* override title */
 	char	  **footers;		/* override footer (default is "(xx rows)") */
@@ -170,7 +170,7 @@ typedef struct printQueryOpt
 	const bool *translate_columns;	/* translate_columns[i-1] => do gettext on
 									 * col i */
 	int			n_translate_columns;	/* length of translate_columns[] */
-} printQueryOpt;
+} printQueryOptBteq;
 
 
 extern volatile bool cancel_pressed_bteq;
@@ -184,32 +184,32 @@ extern void disable_sigpipe_trap_bteq(void);
 extern void restore_sigpipe_trap_bteq(void);
 extern void set_sigpipe_trap_state_bteq(bool ignore);
 
-extern FILE *PageOutputbteq(int lines, const printTableOpt *topt);
+extern FILE *PageOutputbteq(int lines, const printTableOptBteq *topt);
 extern void ClosePagerbteq(FILE *pagerpipe);
 
 extern void html_escaped_print_bteq(const char *in, FILE *fout);
 
-extern void printTableInitbteq(printTableContent *const content,
-			   const printTableOpt *opt, const char *title,
+extern void printTableInitbteq(printTableContentBteq *const content,
+			   const printTableOptBteq *opt, const char *title,
 			   const int ncolumns, const int nrows);
-extern void printTableAddHeaderbteq(printTableContent *const content,
+extern void printTableAddHeaderbteq(printTableContentBteq *const content,
 					char *header, const bool translate, const char align);
-extern void printTableAddCellbteq(printTableContent *const content,
+extern void printTableAddCellbteq(printTableContentBteq *const content,
 				  char *cell, const bool translate, const bool mustfree);
-extern void printTableAddFooterbteq(printTableContent *const content,
+extern void printTableAddFooterbteq(printTableContentBteq *const content,
 					const char *footer);
-extern void printTableSetFooterbteq(printTableContent *const content,
+extern void printTableSetFooterbteq(printTableContentBteq *const content,
 					const char *footer);
-extern void printTableCleanupbteq(printTableContent *const content);
-extern void printTablebteq(const printTableContent *cont,
+extern void printTableCleanupbteq(printTableContentBteq *const content);
+extern void printTablebteq(const printTableContentBteq *cont,
 		   FILE *fout, bool is_pager, FILE *flog);
-extern void printQuerybteq(const PGresult *result, const printQueryOpt *opt,
+extern void printQuerybteq(const PGresult *result, const printQueryOptBteq *opt,
 		   FILE *fout, bool is_pager, FILE *flog);
 
 extern char column_type_alignment_bteq(Oid);
 
 extern void setDecimalLocalebteq(void);
-extern const printTextFormatbteq *get_line_style_bteq(const printTableOpt *opt);
-extern void refresh_utf8format_bteq(const printTableOpt *opt);
+extern const printTextFormatbteq *get_line_style_bteq(const printTableOptBteq *opt);
+extern void refresh_utf8format_bteq(const printTableOptBteq *opt);
 
-#endif							/* PRINT_H */
+#endif							/* PRINT_BTEQ_H */

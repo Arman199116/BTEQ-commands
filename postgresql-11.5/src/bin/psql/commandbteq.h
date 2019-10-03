@@ -1,12 +1,12 @@
 /*
- * psql - the PostgreSQL interactive terminal
+ * BTEQ - the PostgreSQL interactive terminal
  *
  * Copyright (c) 2000-2018, PostgreSQL Global Development Group
  *
  * src/bin/psql/commandbteq.h
  */
-#ifndef COMMAND_H_BTEQ
-#define COMMAND_H_BTEQ
+#ifndef COMMAND_BTEQ_H
+#define COMMAND_BTEQ_H
 
 #include "fe_utils/printbteq.h"
 #include "fe_utils/psqlscan.h"
@@ -30,17 +30,8 @@ extern dotResult HandleDotCmds(PsqlScanState scan_state,
 				PQExpBuffer query_buf,
 				PQExpBuffer previous_buf);
 
-extern int	process_filebteq(char *filename, bool use_relative_path);
-
-extern bool do_psetbteq(const char *param,
-		const char *value,
-		printQueryOpt *popt,
-		bool quiet);
-
 extern void connection_warningsbteq(bool in_startup);
-
 extern void SyncVariablesbteq(void);
 
-extern void UnsyncVariablesbteq(void);
 
-#endif							/* COMMAND_H_BTEQ */
+#endif							/* COMMAND_BTEQ_H */
