@@ -3241,7 +3241,7 @@ printTable(const printTableContent *cont,
 		case PRINT_UNALIGNED:
 			if (cont->opt->expanded == 1)
 				print_unaligned_vertical(cont, fout);
-			else			
+			else
 				print_unaligned_text(cont, fout);
 			break;
 		case PRINT_ALIGNED:
@@ -3255,7 +3255,7 @@ printTable(const printTableContent *cont,
 			if (cont->opt->expanded == 1 ||
 				(cont->opt->expanded == 2 && is_pager))
 				print_aligned_vertical(cont, fout, is_pager);
-			else			
+			else
 				print_aligned_text(cont, fout, is_pager);
 			break;
 		case PRINT_HTML:
