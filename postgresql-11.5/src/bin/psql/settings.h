@@ -11,6 +11,7 @@
 
 #include "variables.h"
 #include "fe_utils/print.h"
+#include "fe_utils/printbteq.h"
 
 #define DEFAULT_FIELD_SEP "|"
 #define DEFAULT_RECORD_SEP "\n"

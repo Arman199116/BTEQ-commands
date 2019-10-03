@@ -307,9 +307,7 @@ do_lo_list(void)
 	myopt.nullPrint = NULL;
 	myopt.title = _("Large objects");
 	myopt.translate_header = true;
-
 	printQuery(res, &myopt, pset.queryFout, false, pset.logfile);
-
 	PQclear(res);
 	return true;
 }

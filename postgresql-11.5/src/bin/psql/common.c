@@ -877,9 +877,7 @@ PrintQueryTuples(const PGresult *results)
 			return false;
 		if (is_pipe)
 			disable_sigpipe_trap();
-
 		printQuery(results, &my_popt, fout, false, pset.logfile);
-
 		if (is_pipe)
 		{
 			pclose(fout);
@@ -888,9 +886,13 @@ PrintQueryTuples(const PGresult *results)
 		else
 			fclose(fout);
 	}
-	else
-		printQuery(results, &my_popt, pset.queryFout, false, pset.logfile);
-
+	else { 
+		if (pset.mode == 1) {
+			printQuerybteq(results, &my_popt, pset.queryFout, false, pset.logfile);
+		} else {
+			printQuery(results, &my_popt, pset.queryFout, false, pset.logfile);
+		}
+	}
 	return true;
 }
 
@@ -1249,6 +1251,7 @@ PrintQueryStatus(PGresult *results)
 static bool
 PrintQueryResults(PGresult *results)
 {
+	
 	bool		success;
 	const char *cmdstatus;
 
@@ -1447,7 +1450,6 @@ SendQuery(const char *query)
 			INSTR_TIME_SUBTRACT(after, before);
 			elapsed_msec = INSTR_TIME_GET_MILLISEC(after);
 		}
-
 		/* but printing results isn't: */
 		if (OK && results)
 			OK = PrintQueryResults(results);
@@ -1871,9 +1873,7 @@ ExecQueryUsingCursor(const char *query, double *elapsed_msec)
 			fout = PageOutput(INT_MAX, &(my_popt.topt));
 			is_pager = true;
 		}
-
 		printQuery(results, &my_popt, fout, is_pager, pset.logfile);
-
 		ClearOrSaveResult(results);
 
 		/* after the first result set, disallow header decoration */

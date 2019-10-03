@@ -913,7 +913,6 @@ listAllDbs(const char *pattern, bool verbose)
 	myopt.translate_header = true;
 
 	printQuery(res, &myopt, pset.queryFout, false, pset.logfile);
-
 	PQclear(res);
 	return true;
 }
@@ -5565,7 +5564,6 @@ describeSubscriptions(const char *pattern, bool verbose)
 	myopt.n_translate_columns = lengthof(translate_columns);
 
 	printQuery(res, &myopt, pset.queryFout, false, pset.logfile);
-
 	PQclear(res);
 	return true;
 }

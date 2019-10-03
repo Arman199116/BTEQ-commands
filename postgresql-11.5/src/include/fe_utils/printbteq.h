@@ -6,7 +6,7 @@
  * Portions Copyright (c) 1996-2018, PostgreSQL Global Development Group
  * Portions Copyright (c) 1994, Regents of the University of California
  *
- * src/include/fe_utils/print.h
+ * src/include/fe_utils/printbteq.h
  *
  *-------------------------------------------------------------------------
  */
@@ -63,7 +63,7 @@ typedef enum printTextLineWrap
 	PRINT_LINE_WRAP_NEWLINE		/* Newline in data */
 } printTextLineWrap;
 
-typedef struct printTextFormat
+typedef struct printTextFormatbteq
 {
 	/* A complete line style */
 	const char *name;			/* for display purposes */
@@ -79,7 +79,7 @@ typedef struct printTextFormat
 	const char *wrap_right;		/* right mark for wrapped data */
 	bool		wrap_right_border;	/* use right-hand border for wrap marks
 									 * when border=0? */
-} printTextFormat;
+} printTextFormatbteq;
 
 typedef enum unicode_linestyle
 {
@@ -109,7 +109,7 @@ typedef struct printTableOpt
 	bool		stop_table;		/* print stop decoration, eg </table> */
 	bool		default_footer; /* allow "(xx rows)" default footer */
 	unsigned long prior_records;	/* start offset for record counters */
-	const printTextFormat *line_style;	/* line style (NULL for default) */
+	const printTextFormatbteq *line_style;	/* line style (NULL for default) */
 	struct separator fieldSep;	/* field separator for unaligned text mode */
 	struct separator recordSep; /* record separator for unaligned text mode */
 	bool		numericLocale;	/* locale-aware numeric units separator and
@@ -138,7 +138,7 @@ typedef struct printTableFooter
 
 /*
  * The table content struct holds all the information which will be displayed
- * by printTable().
+ * by printTablebteq().
  */
 typedef struct printTableContent
 {
@@ -173,42 +173,43 @@ typedef struct printQueryOpt
 } printQueryOpt;
 
 
-extern volatile bool cancel_pressed;
+extern volatile bool cancel_pressed_bteq;
 
-extern const printTextFormat pg_asciiformat;
-extern const printTextFormat pg_asciiformat_old;
-extern printTextFormat pg_utf8format;	/* ideally would be const, but... */
+extern const printTextFormatbteq pg_asciiformat_bteq;
+extern const printTextFormatbteq pg_asciiformat_old_bteq;
+extern printTextFormatbteq pg_utf8format_bteq;	/* ideally would be const, but... */
 
 
-extern void disable_sigpipe_trap(void);
-extern void restore_sigpipe_trap(void);
-extern void set_sigpipe_trap_state(bool ignore);
+extern void disable_sigpipe_trap_bteq(void);
+extern void restore_sigpipe_trap_bteq(void);
+extern void set_sigpipe_trap_state_bteq(bool ignore);
 
-extern FILE *PageOutput(int lines, const printTableOpt *topt);
-extern void ClosePager(FILE *pagerpipe);
+extern FILE *PageOutputbteq(int lines, const printTableOpt *topt);
+extern void ClosePagerbteq(FILE *pagerpipe);
 
-extern void html_escaped_print(const char *in, FILE *fout);
+extern void html_escaped_print_bteq(const char *in, FILE *fout);
 
-extern void printTableInit(printTableContent *const content,
+extern void printTableInitbteq(printTableContent *const content,
 			   const printTableOpt *opt, const char *title,
 			   const int ncolumns, const int nrows);
-extern void printTableAddHeader(printTableContent *const content,
+extern void printTableAddHeaderbteq(printTableContent *const content,
 					char *header, const bool translate, const char align);
-extern void printTableAddCell(printTableContent *const content,
+extern void printTableAddCellbteq(printTableContent *const content,
 				  char *cell, const bool translate, const bool mustfree);
-extern void printTableAddFooter(printTableContent *const content,
+extern void printTableAddFooterbteq(printTableContent *const content,
 					const char *footer);
-extern void printTableSetFooter(printTableContent *const content,
+extern void printTableSetFooterbteq(printTableContent *const content,
 					const char *footer);
-extern void printTableCleanup(printTableContent *const content);
-extern void printTable(const printTableContent *cont,
+extern void printTableCleanupbteq(printTableContent *const content);
+extern void printTablebteq(const printTableContent *cont,
 		   FILE *fout, bool is_pager, FILE *flog);
-extern void printQuery(const PGresult *result, const printQueryOpt *opt,
+extern void printQuerybteq(const PGresult *result, const printQueryOpt *opt,
 		   FILE *fout, bool is_pager, FILE *flog);
-extern char column_type_alignment(Oid);
 
-extern void setDecimalLocale(void);
-extern const printTextFormat *get_line_style(const printTableOpt *opt);
-extern void refresh_utf8format(const printTableOpt *opt);
+extern char column_type_alignment_bteq(Oid);
+
+extern void setDecimalLocalebteq(void);
+extern const printTextFormatbteq *get_line_style_bteq(const printTableOpt *opt);
+extern void refresh_utf8format_bteq(const printTableOpt *opt);
 
 #endif							/* PRINT_H */
