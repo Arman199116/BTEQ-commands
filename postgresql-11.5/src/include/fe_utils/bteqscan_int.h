@@ -61,8 +61,8 @@ typedef void *yyscan_t;
 #endif
 
 /*
- * We use a stack of flex buffers to handle substitution of psql variables.
- * Each stacked buffer contains the as-yet-unread text from one psql variable.
+ * We use a stack of flex buffers to handle substitution of bteq variables.
+ * Each stacked buffer contains the as-yet-unread text from one bteq variable.
  * When we pop the stack all the way, we resume reading from the outer buffer
  * identified by scanbufhandle.
  */
@@ -111,7 +111,7 @@ typedef struct BteqScanStateData
      */
     int            start_state;    /* yylex's starting/finishing state */
     int            paren_depth;    /* depth of nesting in parentheses */
-    int            xcdepth;        /* depth of nesting in slash-star comments */
+    int            xcdepth;        /* depth of nesting in dot-star comments */
     char       *dolqstart;        /* current $foo$ quote start string */
 
     /*
@@ -124,7 +124,7 @@ typedef struct BteqScanStateData
 
 
 /*
- * Functions exported by psqlscan.l, but only meant for use within
+ * Functions exported by bteqscan.l, but only meant for use within
  * compatible lexers.
  */
 extern void bteqscan_push_new_buffer(BteqScanState state,

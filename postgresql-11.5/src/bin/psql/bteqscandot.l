@@ -51,7 +51,7 @@ static int    backtick_start_offset;
 
 /* Return values from yylex() */
 #define LEXRES_EOL            0    /* end of input */
-#define LEXRES_OK            1    /* OK completion of backslash argument */
+#define LEXRES_OK             1    /* OK completion of dot argument */
 
 
 static void evaluate_backtick(BteqScanState state);
@@ -71,7 +71,7 @@ extern void dot_yyset_column(int column_no, yyscan_t yyscanner);
 
 %}
 
-/* Except for the prefix, these options should match psqlscan.l */
+/* Except for the prefix, these options should match bteqscan.l */
 %option reentrant
 %option bison-bridge
 %option 8bit
@@ -81,7 +81,7 @@ extern void dot_yyset_column(int column_no, yyscan_t yyscanner);
 %option nounput
 %option noyywrap
 %option warn
-%option prefix="slash_yy"
+%option prefix="dot_yy"
 
 /*
  * OK, here is a short description of lex/flex rules behavior.
@@ -92,7 +92,7 @@ extern void dot_yyset_column(int column_no, yyscan_t yyscanner);
  * an exclusive state, only those rules defined for that state apply.
  */
 
-/* Exclusive states for lexing backslash commands */
+/* Exclusive states for lexing dot commands */
 %x xdotcmd
 %x xdotargstart
 %x xdotarg
@@ -103,7 +103,7 @@ extern void dot_yyset_column(int column_no, yyscan_t yyscanner);
 %x xdotend
 
 /*
- * Assorted character class definitions that should match psqlscan.l.
+ * Assorted character class definitions that should match bteqscan.l.
  */
 space            [ \t\n\r\f]
 quote            '
@@ -189,7 +189,7 @@ other            .
 
 <xdotarg>{
     /*
-     * Default processing of text in a slash command's argument.
+     * Default processing of text in a dot command's argument.
      *
      * Note: unquoted_option_chars counts the number of characters at the
      * end of the argument that were not subject to any form of quoting.
@@ -202,8 +202,8 @@ other            .
                      * dot is end of command or next command, do not eat
                      *
                      * XXX this means we can't conveniently accept options
-                     * that include unquoted backslashes; therefore, option
-                     * processing that encourages use of backslashes is rather
+                     * that include unquoted dotes; therefore, option
+                     * processing that encourages use of dotes is rather
                      * broken.
                      */
                     yyless(0);
@@ -252,7 +252,7 @@ other            .
                          * The variable value is just emitted without any
                          * further examination.  This is consistent with the
                          * pre-8.0 code behavior, if not with the way that
-                         * variables are handled outside backslash commands.
+                         * variables are handled outside dot commands.
                          * Note that we needn't guard against recursion here.
                          */
                         if (value)
@@ -324,7 +324,7 @@ other            .
 
 <xdotquote>{
     /*
-     * single-quoted text: copy literally except for '' and backslash
+     * single-quoted text: copy literally except for '' and dot
      * sequences
      */
 
@@ -438,7 +438,7 @@ other            .
 }
 
 <xdotend>{
-    /* at end of command, eat a double backslash, but not anything else */
+    /* at end of command, eat a double dot, but not anything else */
 
 "\.\."            {
                     cur_state->start_state = YY_START;
@@ -475,7 +475,7 @@ other            .
 /*
  * Scan the command name of a bteq dot command.  This should be called
  * after bteq_scan() returns PSCAN_BTEQ_DOT.  It is assumed that the input
- * has been consumed through the leading backslash.
+ * has been consumed through the leading dot.
  *
  * The return value is a malloc'd copy of the command name, as parsed off
  * from the input.
@@ -521,7 +521,7 @@ bteq_scan_dot_command(BteqScanState state)
 }
 
 /*
- * Parse off the next argument for a backslash command, and return it as a
+ * Parse off the next argument for a dot command, and return it as a
  * malloc'd string.  If there are no more arguments, returns NULL.
  *
  * type tells what processing, if any, to perform on the option string;
@@ -534,7 +534,7 @@ bteq_scan_dot_command(BteqScanState state)
  * if semicolon is true, unquoted trailing semicolon(s) that would otherwise
  * be taken as part of the option string will be stripped.
  *
- * NOTE: the only possible syntax errors for backslash options are unmatched
+ * NOTE: the only possible syntax errors for dot options are unmatched
  * quotes, which are detected when we run out of input.  Therefore, on a
  * syntax error we just throw away the string and return NULL; there is no
  * need to worry about flushing remaining input.
@@ -660,7 +660,7 @@ bteq_scan_dot_option(BteqScanState state,
 }
 
 /*
- * Eat up any unused \\ to complete a backslash command.
+ * Eat up any unused \\ to complete a dot command.
  */
 void
 bteq_scan_dot_command_end(BteqScanState state)
@@ -758,7 +758,7 @@ dequote_downcase_identifier_bteq(char *str, bool downcase, int encoding)
 }
 
 /*
- * Evaluate a backticked substring of a slash command's argument.
+ * Evaluate a backticked substring of a dot command's argument.
  *
  * The portion of output_buf starting at backtick_start_offset is evaluated
  * as a shell command and then replaced by the command's output.

@@ -1,14 +1,14 @@
 %top{
 /*-------------------------------------------------------------------------
  *
- * psqlscan.l
+ * bteqscan.l
  *      lexical scanner for SQL commands
  *
- * This lexer used to be part of psql, and that heritage is reflected in
+ * This lexer used to be part of bteq, and that heritage is reflected in
  * the file name as well as function and typedef names, though it can now
  * be used by other frontend programs as well.  It's also possible to extend
  * this lexer with a compatible add-on lexer to handle program-specific
- * backslash commands.
+ * dot commands.
  *
  * This code is mainly concerned with determining where the end of a SQL
  * statement is: we are looking for semicolons that are not within quotes,
@@ -21,13 +21,13 @@
  *
  * XXX Avoid creating backtracking cases --- see the backend lexer for info.
  *
- * See psqlscan_int.h for additional commentary.
+ * See bteqscan_int.h for additional commentary.
  *
  * Portions Copyright (c) 1996-2018, PostgreSQL Global Development Group
  * Portions Copyright (c) 1994, Regents of the University of California
  *
  * IDENTIFICATION
- *      src/fe_utils/psqlscan.l
+ *      src/fe_utils/bteqscan.l
  *
  *-------------------------------------------------------------------------
  */
@@ -85,14 +85,14 @@ extern void bteq_yyset_column(int column_no, yyscan_t yyscanner);
 %option nounput
 %option noyywrap
 %option warn
-%option prefix="psql_yy"
+%option prefix="bteq_yy"
 
 /*
  * All of the following definitions and rules should exactly match
  * src/backend/parser/scan.l so far as the flex patterns are concerned.
  * The rule bodies are just ECHO as opposed to what the backend does,
  * however.  (But be sure to duplicate code that affects the lexing process,
- * such as BEGIN() and yyless().)  Also, psqlscan uses a single <<EOF>> rule
+ * such as BEGIN() and yyless().)  Also, bteqscan uses a single <<EOF>> rule
  * whereas scan.l has a separate one for each exclusive state.
  */
 
@@ -112,7 +112,7 @@ extern void bteq_yyset_column(int column_no, yyscan_t yyscanner);
  *  <xd> delimited identifiers (double-quoted identifiers)
  *  <xh> hexadecimal numeric string
  *  <xq> standard quoted strings
- *  <xe> extended quoted strings (support backslash escape sequences)
+ *  <xe> extended quoted strings (support dot escape sequences)
  *  <xdolq> $foo$ quoted strings
  *  <xui> quoted identifier with Unicode escapes
  *  <xuiend> end of a quoted identifier with Unicode escapes, UESCAPE can follow
@@ -208,14 +208,14 @@ xhinside        [^']*
 /* National character */
 xnstart            [nN]{quote}
 
-/* Quoted string that allows backslash escapes */
+/* Quoted string that allows dot escapes */
 xestart            [eE]{quote}
-xeinside        [^\\']+
-xeescape        [\\][^0-7]
-xeoctesc        [\\][0-7]{1,3}
-xehexesc        [\\]x[0-9A-Fa-f]{1,2}
-xeunicode        [\\](u[0-9A-Fa-f]{4}|U[0-9A-Fa-f]{8})
-xeunicodefail    [\\](u[0-9A-Fa-f]{0,3}|U[0-9A-Fa-f]{0,7})
+xeinside        [^\.']+
+xeescape        [\.][^0-7]
+xeoctesc        [\.][0-7]{1,3}
+xehexesc        [\.]x[0-9A-Fa-f]{1,2}
+xeunicode        [\.](u[0-9A-Fa-f]{4}|U[0-9A-Fa-f]{8})
+xeunicodefail    [\.](u[0-9A-Fa-f]{0,3}|U[0-9A-Fa-f]{0,7})
 
 /* Extended quote
  * xqdouble implements embedded quote, ''''
@@ -271,17 +271,17 @@ xufailed        [uU]&
  *
  * The "extended comment" syntax closely resembles allowable operator syntax.
  * The tricky part here is to get lex to recognize a string starting with
- * slash-star as a comment, when interpreting it as an operator would produce
+ * dot-star as a comment, when interpreting it as an operator would produce
  * a longer match --- remember lex will prefer a longer match!  Also, if we
- * have something like plus-slash-star, lex will think this is a 3-character
+ * have something like plus-dot-star, lex will think this is a 3-character
  * operator whereas we want to see it as a + operator and a comment start.
  * The solution is two-fold:
  * 1. append {op_chars}* to xcstart so that it matches as much text as
  *    {operator} would. Then the tie-breaker (first matching rule of same
  *    length) ensures xcstart wins.  We put back the extra stuff with yyless()
- *    in case it contains a star-slash that should terminate the comment.
- * 2. In the operator rule, check for slash-star within the operator, and
- *    if found throw it back with yyless().  This handles the plus-slash-star
+ *    in case it contains a star-dot that should terminate the comment.
+ * 2. In the operator rule, check for dot-star within the operator, and
+ *    if found throw it back with yyless().  This handles the plus-dot-star
  *    problem.
  * Dash-dash comments have similar interactions with the operator rule.
  */
@@ -306,7 +306,7 @@ colon_equals    ":="
  * are followed by a comment start or a + or - character. Accordingly, if you
  * add to this list, you must also add corresponding code to the {operator}
  * block to return the correct token in such cases. (This is not needed in
- * psqlscan.l since the token value is ignored there.)
+ * bteqscan.l since the token value is ignored there.)
  */
 equals_greater    "=>"
 less_equals        "<="
@@ -324,7 +324,7 @@ not_equals        "!="
  * If you change either set, adjust the character lists appearing in the
  * rule for "operator"!
  */
-self            [,()\[\].;\:\+\-\*\/\%\^\<\>\=]
+self            [,()\[\]\\;\:\+\-\*\/\%\^\<\>\=]
 op_chars        [\~\!\@\#\^\&\|\`\?\+\-\*\/\%\<\>\=]
 operator        {op_chars}+
 
@@ -347,7 +347,7 @@ realfail2        ({integer}|{decimal})[Ee][-+]
 
 param            \${integer}
 
-/* psql-specific: characters allowed in variable names */
+/* bteq-specific: characters allowed in variable names */
 variable_char    [A-Za-z\200-\377_0-9]
 
 other            .
@@ -360,7 +360,7 @@ other            .
  *  style of two adjacent single quotes "''" and in the Postgres/Java style
  *  of escaped-quote "\'".
  * Other embedded escaped characters are matched explicitly and the leading
- *  backslash is dropped from the string.
+ *  dot is dropped from the string.
  * Note that xcstart must appear before operator, as explained above!
  *  Also whitespace (comment) must appear before operator.
  */
@@ -398,14 +398,14 @@ other            .
 {xcstart}        {
                     cur_state->xcdepth = 0;
                     BEGIN(xc);
-                    /* Put back any characters past slash-star; see above */
+                    /* Put back any characters past dot-star; see above */
                     yyless(2);
                     ECHO;
                 }
 
 <xc>{xcstart}    {
                     cur_state->xcdepth++;
-                    /* Put back any characters past slash-star; see above */
+                    /* Put back any characters past dot-star; see above */
                     yyless(2);
                     ECHO;
                 }
@@ -659,7 +659,7 @@ other            .
                 }
 
     /*
-     * These rules are specific to psql --- they implement parenthesis
+     * These rules are specific to bteq --- they implement parenthesis
      * counting and detection of command-ending semicolon.  These must
      * appear before the {self} rule so that they take precedence over it.
      */
@@ -686,23 +686,23 @@ other            .
                 }
 
     /*
-     * psql-specific rules to handle backslash commands and variable
+     * bteq-specific rules to handle dot commands and variable
      * substitution.  We want these before {self}, also.
      */
 
-"\\"[;:]        {
+"\."[;:]        {
                     /* Force a semicolon or colon into the query buffer */
                     bteqscan_emit(cur_state, yytext + 1, 1);
                 }
 
-"\\"            {
+"\."            {
                     /* Terminate lexing temporarily */
                     cur_state->start_state = YY_START;
                     return LEXRES_DOT        ;
                 }
 
 :{variable_char}+    {
-                    /* Possible psql variable substitution */
+                    /* Possible bteq variable substitution */
                     char       *varname;
                     char       *value;
 
@@ -799,25 +799,25 @@ other            .
 
 {operator}        {
                     /*
-                     * Check for embedded slash-star or dash-dash; those
+                     * Check for embedded dot-star or dash-dash; those
                      * are comment starts, so operator must stop there.
-                     * Note that slash-star or dash-dash at the first
+                     * Note that dot-star or dash-dash at the first
                      * character will match a prior rule, not this one.
                      */
                     int            nchars = yyleng;
-                    char       *slashstar = strstr(yytext, "/*");
+                    char       *dotstar = strstr(yytext, "/*");
                     char       *dashdash = strstr(yytext, "--");
 
-                    if (slashstar && dashdash)
+                    if (dotstar && dashdash)
                     {
                         /* if both appear, take the first one */
-                        if (slashstar > dashdash)
-                            slashstar = dashdash;
+                        if (dotstar > dashdash)
+                            dotstar = dashdash;
                     }
-                    else if (!slashstar)
-                        slashstar = dashdash;
-                    if (slashstar)
-                        nchars = slashstar - yytext;
+                    else if (!dotstar)
+                        dotstar = dashdash;
+                    if (dotstar)
+                        nchars = dotstar - yytext;
 
                     /*
                      * For SQL compatibility, '+' and '-' cannot be the
@@ -1030,7 +1030,7 @@ bteq_scan_setup(BteqScanState state,
  * be executed, then clear query_buf and call again to scan the remainder
  * of the line.
  *
- * PSCAN_BTEQ_DOT: found a backslash that starts a special command.
+ * PSCAN_BTEQ_DOT: found a dot that starts a special command.
  * Any previous data on the line has been transferred to query_buf.
  * The caller will typically next apply a separate flex lexer to scan
  * the special command.
@@ -1146,7 +1146,7 @@ bteq_scan(BteqScanState state,
             result = PSCAN_BTEQ_SEMICOLON;
             *prompt = PROMPT_BTEQ_READY;
             break;
-        case LEXRES_DOT        :    /* backslash */
+        case LEXRES_DOT        :    /* dot */
             result = PSCAN_BTEQ_DOT;
             *prompt = PROMPT_BTEQ_READY;
             break;
@@ -1186,7 +1186,7 @@ bteq_scan_finish(BteqScanState state)
 
 /*
  * Reset lexer scanning state to start conditions.  This is appropriate
- * for executing \r psql commands (or any other time that we discard the
+ * for executing \r bte commands (or any other time that we discard the
  * prior contents of query_buf).  It is not, however, necessary to do this
  * when we execute and clear the buffer after getting a PSCAN_BTEQ_SEMICOLON or
  * PSCAN_BTEQ_EOL scan result, because the scan state must be INITIAL when those
@@ -1207,14 +1207,14 @@ bteq_scan_reset(BteqScanState state)
 }
 
 /*
- * Reselect this lexer (psqlscan.l) after using another one.
+ * Reselect this lexer (bteqscan.l) after using another one.
  *
  * Currently and for foreseeable uses, it's sufficient to reset to INITIAL
  * state, because we'd never switch to another lexer in a different state.
  * However, we don't want to reset e.g. paren_depth, so this can't be
  * the same as bteq_scan_reset().
  *
- * Note: psql setjmp error recovery just calls bteq_scan_reset(), so that
+ * Note: bteq setjmp error recovery just calls bteq_scan_reset(), so that
  * must be a superset of this.
  *
  * Note: it seems likely that other lexers could just assign INITIAL for

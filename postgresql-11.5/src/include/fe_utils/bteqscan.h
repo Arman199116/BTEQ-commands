@@ -1,19 +1,19 @@
 /*-------------------------------------------------------------------------
  *
- * psqlscan.h
+ * bteqscan.h
  *      lexical scanner for SQL commands
  *
- * This lexer used to be part of psql, and that heritage is reflected in
+ * This lexer used to be part of bteq, and that heritage is reflected in
  * the file name as well as function and typedef names, though it can now
  * be used by other frontend programs as well.  It's also possible to extend
  * this lexer with a compatible add-on lexer to handle program-specific
- * backslash commands.
+ * dot commands.
  *
  *
  * Portions Copyright (c) 1996-2018, PostgreSQL Global Development Group
  * Portions Copyright (c) 1994, Regents of the University of California
  *
- * src/include/fe_utils/psqlscan.h
+ * src/include/fe_utils/bteqscan.h
  *
  *-------------------------------------------------------------------------
  */

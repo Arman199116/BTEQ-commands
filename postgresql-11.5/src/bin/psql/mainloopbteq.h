@@ -1,5 +1,5 @@
 /*
- * psql - the PostgreSQL interactive terminal
+ * bteq - the PostgreSQL interactive terminal
  *
  * Copyright (c) 2000-2018, PostgreSQL Global Development Group
  *

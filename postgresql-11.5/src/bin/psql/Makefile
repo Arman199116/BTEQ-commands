@@ -23,7 +23,7 @@ LDFLAGS_INTERNAL += -L$(top_builddir)/src/fe_utils -lpgfeutils $(libpq_pgport)
 
 OBJS=	command.o commandbteq.o common.o copy.o crosstabview.o \
 	describe.o help.o input.o large_obj.o mainloop.o mainloopbteq.o \
-	prompt.o psqlscanslash.o sql_help.o startup.o stringutils.o \
+	prompt.o psqlscanslash.o bteqscandot.o sql_help.o startup.o stringutils.o \
 	tab-complete.o variables.o \
 	$(WIN32RES)
 
@@ -46,7 +46,11 @@ psqlscanslash.c: FLEXFLAGS = -Cfe -p -p
 psqlscanslash.c: FLEX_NO_BACKUP=yes
 psqlscanslash.c: FLEX_FIX_WARNING=yes
 
-distprep: sql_help.h sql_help.c psqlscanslash.c
+bteqscandot.c: FLEXFLAGS = -Cfe -p -p
+bteqscandot.c: FLEX_NO_BACKUP=yes
+bteqscandot.c: FLEX_FIX_WARNING=yes
+
+distprep: sql_help.h sql_help.c psqlscanslash.c bteqscandot.c
 
 install: all installdirs
 	$(INSTALL_PROGRAM) psql$(X) '$(DESTDIR)$(bindir)/psql$(X)'
@@ -64,4 +68,4 @@ clean distclean:
 # files removed here are supposed to be in the distribution tarball,
 # so do not clean them in the clean/distclean rules
 maintainer-clean: distclean
-	rm -f sql_help.h sql_help.c psqlscanslash.c
+	rm -f sql_help.h sql_help.c psqlscanslash.c bteqscandot.c
