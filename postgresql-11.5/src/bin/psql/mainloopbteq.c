@@ -46,7 +46,7 @@ MainLoopBteq(FILE *source)
     FILE       *prev_cmd_source;
     bool        prev_cmd_interactive;
     uint64        prev_lineno;
-printf("bteq1 mainloop.c\n");
+printf("bteq mainloop.c\n");
     /* Save the prior command source */
     prev_cmd_source = pset.cur_cmd_source;
     prev_cmd_interactive = pset.cur_cmd_interactive;
@@ -202,6 +202,7 @@ printf("bteq1 mainloop.c\n");
         }
 
         /* no further processing of empty lines, unless within a literal */
+
         if (line[0] == '\0' && !bteq_scan_in_quote(scan_state))
         {
             free(line);

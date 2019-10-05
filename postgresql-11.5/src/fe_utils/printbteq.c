@@ -2210,7 +2210,7 @@ latex_escaped_print(const char *in, FILE *fout)
             case '>':
                 fputs("\\textgreater{}", fout);
                 break;
-            case '\\':
+            case '\.':
                 fputs("\\textbackdot{}", fout);
                 break;
             case '^':
@@ -3311,7 +3311,7 @@ void
 printQuerybteq(const PGresult *result, const printQueryOptBteq *opt,
            FILE *fout, bool is_pager, FILE *flog)
 {
-    printf("printbteq.c1\n");
+    printf("printbteq.c\n");
     printTableContentBteq cont;
     int            i,
                 r,

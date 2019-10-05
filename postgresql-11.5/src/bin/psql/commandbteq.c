@@ -104,6 +104,7 @@ static void checkWin32Codepage(void);
  */
 
 dotResult
+
 HandleDotCmds(BteqScanState scan_state,
                 ConditionalStack cstack,
                 PQExpBuffer query_buf,
@@ -112,7 +113,7 @@ HandleDotCmds(BteqScanState scan_state,
     dotResult status;
     char       *cmd;
     char       *arg;
-    printf("bteq1 command.c\n");
+    printf("bteq command.c\n");
     Assert(scan_state != NULL);
     Assert(cstack != NULL);
 

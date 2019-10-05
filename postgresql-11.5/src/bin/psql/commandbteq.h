@@ -7,7 +7,7 @@
  */
 #ifndef COMMAND_BTEQ_H
 #define COMMAND_BTEQ_H
-
+    
 #include "fe_utils/printbteq.h"
 #include "fe_utils/bteqscan.h"
 #include "fe_utils/conditional.h"
@@ -23,7 +23,6 @@ typedef enum _dotResult
     BTEQ_CMD_ERROR                /* the execution of the dot command
                                  * resulted in an error */
 } dotResult;
-
 
 extern dotResult HandleDotCmds(BteqScanState scan_state,
                 ConditionalStack cstack,
