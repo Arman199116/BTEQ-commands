@@ -1,5 +1,5 @@
 /*
- * BTEQ - the PostgreSQL interactive terminal
+ * bteq - the PostgreSQL interactive terminal
  *
  * Copyright (c) 2000-2018, PostgreSQL Global Development Group
  *
@@ -37,9 +37,9 @@
 #include "help.h"
 #include "input.h"
 #include "large_obj.h"
-#include "mainloop.h"
+#include "mainloopbteq.h"
 #include "fe_utils/printbteq.h"
-#include "psqlscanslash.h"
+#include "bteqscandot.h"
 #include "settings.h"
 #include "variables.h"
 
@@ -54,14 +54,14 @@ typedef enum EditableObjectType
 
 /* local function declarations */
 static dotResult exec_command(const char *cmd,
-             PsqlScanState scan_state,
+             BteqScanState scan_state,
              ConditionalStack cstack,
              PQExpBuffer query_buf,
              PQExpBuffer previous_buf);
-static dotResult exec_command_logon(PsqlScanState scan_state, bool active_branch);
-static dotResult exec_command_quit(PsqlScanState scan_state, bool active_branch);
-static dotResult exec_command_set(PsqlScanState scan_state, bool active_branch);
-static void ignore_slash_options(PsqlScanState scan_state);
+static dotResult exec_command_logon(BteqScanState scan_state, bool active_branch);
+static dotResult exec_command_quit(BteqScanState scan_state, bool active_branch);
+static dotResult exec_command_set(BteqScanState scan_state, bool active_branch);
+static void ignore_dot_options(BteqScanState scan_state);
 static bool is_branching_command(const char *cmd);
 
 static void copy_previous_query(PQExpBuffer query_buf, PQExpBuffer previous_buf);
@@ -104,7 +104,8 @@ static void checkWin32Codepage(void);
  */
 
 dotResult
-HandleDotCmds(PsqlScanState scan_state,
+
+HandleDotCmds(BteqScanState scan_state,
                 ConditionalStack cstack,
                 PQExpBuffer query_buf,
                 PQExpBuffer previous_buf)
@@ -117,7 +118,7 @@ HandleDotCmds(PsqlScanState scan_state,
     Assert(cstack != NULL);
 
     /* Parse off the command name */
-    cmd = psql_scan_slash_command(scan_state);
+    cmd = bteq_scan_dot_command(scan_state);
 
     /* And try to execute it */
     status = exec_command(cmd, scan_state, cstack, query_buf, previous_buf);
@@ -141,8 +142,8 @@ HandleDotCmds(PsqlScanState scan_state,
         bool        active_branch = conditional_active(cstack);
 
         conditional_stack_push(cstack, IFSTATE_IGNORED);
-        while ((arg = psql_scan_slash_option(scan_state,
-                                             OT_NORMAL, NULL, false)))
+        while ((arg = bteq_scan_dot_option(scan_state,
+                                             OT_BTEQ_NORMAL, NULL, false)))
         {
             if (active_branch)
                 psql_error("\\%s: extra argument \"%s\" ignored\n", cmd, arg);
@@ -153,13 +154,13 @@ HandleDotCmds(PsqlScanState scan_state,
     else
     {
         /* silently throw away rest of line after an erroneous command */
-        while ((arg = psql_scan_slash_option(scan_state,
-                                             OT_WHOLE_LINE, NULL, false)))
+        while ((arg = bteq_scan_dot_option(scan_state,
+                                             OT_BTEQ_WHOLE_LINE, NULL, false)))
             free(arg);
     }
 
     /* if there is a trailing \\, swallow it */
-    psql_scan_slash_command_end(scan_state);
+    bteq_scan_dot_command_end(scan_state);
 
     free(cmd);
 
@@ -177,9 +178,11 @@ HandleDotCmds(PsqlScanState scan_state,
  * commands return something else.  Failure results are BTEQ_CMD_ERROR,
  * unless BTEQ_CMD_UNKNOWN is more appropriate.
  */
+
+
 static dotResult
 exec_command(const char *cmd,
-             PsqlScanState scan_state,
+             BteqScanState scan_state,
              ConditionalStack cstack,
              PQExpBuffer query_buf,
              PQExpBuffer previous_buf)
@@ -205,7 +208,7 @@ exec_command(const char *cmd,
         status = exec_command_logon(scan_state, active_branch);
     else if (strcasecmp(cmd, "set") == 0)
         status = exec_command_set(scan_state, active_branch);
-    else if (strcasecmp(cmd, "quit") == 0 || strcmp(cmd, "q") == 0)
+    else if (strcasecmp(cmd, "quit") == 0 || strcasecmp(cmd, "q") == 0)
         status = exec_command_quit(scan_state, active_branch);
     else
         status = BTEQ_CMD_UNKNOWN;
@@ -223,21 +226,16 @@ exec_command(const char *cmd,
 
 
 /*
- * \a -- toggle field alignment
+ * .logon -- toggle field alignment
  *
  * This makes little sense but we keep it around.
  */
 static dotResult
-exec_command_logon(PsqlScanState scan_state, bool active_branch)
+exec_command_logon(BteqScanState scan_state, bool active_branch)
 {
-    bool        success = true;
-    /* TODO: implement logon */
-    if (active_branch)
-    {
-        
-    }
+    printf(".logon bteq\n");
 
-    return success ? BTEQ_CMD_SKIP_LINE : BTEQ_CMD_ERROR;
+    return 1;
 }
 
 
@@ -245,7 +243,7 @@ exec_command_logon(PsqlScanState scan_state, bool active_branch)
  * \q or \quit -- exit BTEQ
  */
 static dotResult
-exec_command_quit(PsqlScanState scan_state, bool active_branch)
+exec_command_quit(BteqScanState scan_state, bool active_branch)
 {
     dotResult status = BTEQ_CMD_SKIP_LINE;
 
@@ -260,14 +258,14 @@ exec_command_quit(PsqlScanState scan_state, bool active_branch)
  * \set -- set variable
  */
 static dotResult
-exec_command_set(PsqlScanState scan_state, bool active_branch)
+exec_command_set(BteqScanState scan_state, bool active_branch)
 {
     bool        success = true;
 
     if (active_branch)
     {
-        char       *opt0 = psql_scan_slash_option(scan_state,
-                                                  OT_NORMAL, NULL, false);
+        char       *opt0 = bteq_scan_dot_option(scan_state,
+                                                  OT_BTEQ_NORMAL, NULL, false);
 
         if (!opt0)
         {
@@ -283,13 +281,13 @@ exec_command_set(PsqlScanState scan_state, bool active_branch)
             char       *newval;
             char       *opt;
 
-            opt = psql_scan_slash_option(scan_state,
-                                         OT_NORMAL, NULL, false);
+            opt = bteq_scan_dot_option(scan_state,
+                                         OT_BTEQ_NORMAL, NULL, false);
             newval = pg_strdup(opt ? opt : "");
             free(opt);
 
-            while ((opt = psql_scan_slash_option(scan_state,
-                                                 OT_NORMAL, NULL, false)))
+            while ((opt = bteq_scan_dot_option(scan_state,
+                                                 OT_BTEQ_NORMAL, NULL, false)))
             {
                 newval = pg_realloc(newval, strlen(newval) + strlen(opt) + 1);
                 strcat(newval, opt);
@@ -304,7 +302,7 @@ exec_command_set(PsqlScanState scan_state, bool active_branch)
         free(opt0);
     }
     else
-        ignore_slash_options(scan_state);
+        ignore_dot_options(scan_state);
 
     return success ? BTEQ_CMD_SKIP_LINE : BTEQ_CMD_ERROR;
 }
@@ -313,17 +311,17 @@ exec_command_set(PsqlScanState scan_state, bool active_branch)
  * Read and discard "normal" dot command options.
  *
  * This should be used for inactive-branch processing of any dot command
- * that eats one or more OT_NORMAL, OT_SQLID, or OT_SQLIDHACK parameters.
+ * that eats one or more OT_BTEQ_NORMAL, OT_BTEQ_SQLID, or OT_BTEQ_SQLIDHACK parameters.
  * We don't need to worry about exactly how many it would eat, since the
  * cleanup logic in HandleDotCmds would silently discard any extras anyway.
  */
 static void
-ignore_slash_options(PsqlScanState scan_state)
+ignore_dot_options(BteqScanState scan_state)
 {
     char       *arg;
 
-    while ((arg = psql_scan_slash_option(scan_state,
-                                         OT_NORMAL, NULL, false)) != NULL)
+    while ((arg = bteq_scan_dot_option(scan_state,
+                                         OT_BTEQ_NORMAL, NULL, false)) != NULL)
         free(arg);
 }
 
@@ -361,6 +359,8 @@ copy_previous_query(PQExpBuffer query_buf, PQExpBuffer previous_buf)
  * password is for, if one has been explicitly specified. Returns a
  * malloc'd string.
  */
+
+
 static char *
 prompt_for_password(const char *username)
 {

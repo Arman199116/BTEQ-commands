@@ -335,7 +335,7 @@ print_separator(struct separatorbteq sep, FILE *fout)
  * Return the list of explicitly-requested footers or, when applicable, the
  * default "(xx rows)" footer.  Always omit the default footer when given
  * non-default footers, "\pset footer off", or a specific instruction to that
- * effect from a calling backslash command.  Vertical formats number each row,
+ * effect from a calling dot command.  Vertical formats number each row,
  * making the default footer redundant; they do not call this function.
  *
  * The return value may point to static storage; do not keep it across calls.
@@ -2210,8 +2210,8 @@ latex_escaped_print(const char *in, FILE *fout)
             case '>':
                 fputs("\\textgreater{}", fout);
                 break;
-            case '\\':
-                fputs("\\textbackslash{}", fout);
+            case '\.':
+                fputs("\\textbackdot{}", fout);
                 break;
             case '^':
                 fputs("\\^{}", fout);

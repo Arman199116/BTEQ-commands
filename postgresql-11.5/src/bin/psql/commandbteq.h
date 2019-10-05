@@ -1,5 +1,5 @@
 /*
- * BTEQ - the PostgreSQL interactive terminal
+ * bteq - the PostgreSQL interactive terminal
  *
  * Copyright (c) 2000-2018, PostgreSQL Global Development Group
  *
@@ -9,7 +9,7 @@
 #define COMMAND_BTEQ_H
     
 #include "fe_utils/printbteq.h"
-#include "fe_utils/psqlscan.h"
+#include "fe_utils/bteqscan.h"
 #include "fe_utils/conditional.h"
 
 
@@ -24,8 +24,7 @@ typedef enum _dotResult
                                  * resulted in an error */
 } dotResult;
 
-
-extern dotResult HandleDotCmds(PsqlScanState scan_state,
+extern dotResult HandleDotCmds(BteqScanState scan_state,
                 ConditionalStack cstack,
                 PQExpBuffer query_buf,
                 PQExpBuffer previous_buf);

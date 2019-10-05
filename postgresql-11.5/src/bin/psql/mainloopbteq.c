@@ -1,11 +1,12 @@
 /*
- * psql - the PostgreSQL interactive terminal
+ * bteq - the PostgreSQL interactive terminal
  *
  * Copyright (c) 2000-2018, PostgreSQL Global Development Group
  *
  * src/bin/psql/mainloopbteq.c
  */
 #include "postgres_fe.h"
+#include "mainloopbteq.h"
 #include "mainloop.h"
 
 #include "commandbteq.h"
@@ -16,17 +17,16 @@
 
 #include "mb/pg_wchar.h"
 
-
-/* callback functions for our flex lexer */
-
 /*
  * Main processing loop for reading lines of input
  *    and sending them to the backend.
  */
+
+
 int
 MainLoopBteq(FILE *source)
 {
-    PsqlScanState scan_state;    /* lexer working state */
+    BteqScanState scan_state;    /* lexer working state */
     ConditionalStack cond_stack;    /* \if status stack */
     volatile PQExpBuffer query_buf; /* buffer for query being accumulated */
     volatile PQExpBuffer previous_buf;    /* if there isn't anything in the new
@@ -39,8 +39,8 @@ MainLoopBteq(FILE *source)
     bool        success;
     bool        line_saved_in_history;
     volatile int successResult = EXIT_SUCCESS;
-    volatile dotResult slashCmdStatus = BTEQ_CMD_UNKNOWN;
-    volatile promptStatus_t prompt_status = PROMPT_READY;
+    volatile dotResult dotCmdStatus = BTEQ_CMD_UNKNOWN;
+    volatile promptStatus_bteq_t prompt_status = PROMPT_BTEQ_READY;
     volatile int count_eof = 0;
     volatile bool die_on_error = false;
     FILE       *prev_cmd_source;
@@ -60,9 +60,9 @@ printf("bteq mainloop.c\n");
     pset.stmt_lineno = 1;
 
     /* Create working state */
-    scan_state = psql_scan_create(&psqlscan_callbacks);
+    scan_state = bteq_scan_create(&psqlscan_callbacks);
     cond_stack = conditional_stack_create();
-    psql_scan_set_passthrough(scan_state, (void *) cond_stack);
+    bteq_scan_set_passthrough(scan_state, (void *) cond_stack);
 
     query_buf = createPQExpBuffer();
     previous_buf = createPQExpBuffer();
@@ -105,13 +105,13 @@ printf("bteq mainloop.c\n");
             /* got here with longjmp */
 
             /* reset parsing state */
-            psql_scan_finish(scan_state);
-            psql_scan_reset(scan_state);
+            bteq_scan_finish(scan_state);
+            bteq_scan_reset(scan_state);
             resetPQExpBuffer(query_buf);
             resetPQExpBuffer(history_buf);
             count_eof = 0;
-            slashCmdStatus = BTEQ_CMD_UNKNOWN;
-            prompt_status = PROMPT_READY;
+            dotCmdStatus = BTEQ_CMD_UNKNOWN;
+            prompt_status = PROMPT_BTEQ_READY;
             pset.stmt_lineno = 1;
             cancel_pressed_bteq = false;
 
@@ -145,7 +145,7 @@ printf("bteq mainloop.c\n");
         {
             /* May need to reset prompt, eg after \r command */
             if (query_buf->len == 0)
-                prompt_status = PROMPT_READY;
+                prompt_status = PROMPT_BTEQ_READY;
             line = gets_interactive(get_prompt(prompt_status, cond_stack),
                                     query_buf);
         }
@@ -202,7 +202,8 @@ printf("bteq mainloop.c\n");
         }
 
         /* no further processing of empty lines, unless within a literal */
-        if (line[0] == '\0' && !psql_scan_in_quote(scan_state))
+
+        if (line[0] == '\0' && !bteq_scan_in_quote(scan_state))
         {
             free(line);
             continue;
@@ -277,10 +278,10 @@ printf("bteq mainloop.c\n");
 #endif
                 else
                 {
-                    puts(_("You are using psql, the command-line interface to PostgreSQL."));
+                    puts(_("You are using bteq, the command-line interface to PostgreSQL."));
                     printf(_("Type:  \\copyright for distribution terms\n"
                              "       \\h for help with SQL commands\n"
-                             "       \\? for help with psql commands\n"
+                             "       \\? for help with bteq commands\n"
                              "       \\g or terminate with semicolon to execute query\n"
                              "       \\q to quit\n"));
                     free(line);
@@ -299,9 +300,9 @@ printf("bteq mainloop.c\n");
             {
                 if (query_buf->len != 0)
                 {
-                    if (prompt_status == PROMPT_READY ||
-                        prompt_status == PROMPT_CONTINUE ||
-                        prompt_status == PROMPT_PAREN)
+                    if (prompt_status == PROMPT_BTEQ_READY ||
+                        prompt_status == PROMPT_BTEQ_CONTINUE ||
+                        prompt_status == PROMPT_BTEQ_PAREN)
                         puts(_("Use \\q to quit."));
                     else
 #ifndef WIN32
@@ -325,9 +326,9 @@ printf("bteq mainloop.c\n");
              * a hint.  The text is still added to the query buffer.
              */
             if (found_q && query_buf->len != 0 &&
-                prompt_status != PROMPT_READY &&
-                prompt_status != PROMPT_CONTINUE &&
-                prompt_status != PROMPT_PAREN)
+                prompt_status != PROMPT_BTEQ_READY &&
+                prompt_status != PROMPT_BTEQ_CONTINUE &&
+                prompt_status != PROMPT_BTEQ_PAREN)
 #ifndef WIN32
                 puts(_("Use control-D to quit."));
 #else
@@ -357,20 +358,20 @@ printf("bteq mainloop.c\n");
         /*
          * Parse line, looking for command separators.
          */
-        psql_scan_setup(scan_state, line, strlen(line),
+        bteq_scan_setup(scan_state, line, strlen(line),
                         pset.encoding, standard_strings());
         success = true;
         line_saved_in_history = false;
 
         while (success || !die_on_error)
         {
-            PsqlScanResult scan_result;
-            promptStatus_t prompt_tmp = prompt_status;
+            BteqScanResult scan_result;
+            promptStatus_bteq_t prompt_tmp = prompt_status;
             size_t        pos_in_query;
             char       *tmp_line;
 
             pos_in_query = query_buf->len;
-            scan_result = psql_scan(scan_state, query_buf, &prompt_tmp);
+            scan_result = bteq_scan(scan_state, query_buf, &prompt_tmp);
             prompt_status = prompt_tmp;
 
             if (PQExpBufferBroken(query_buf))
@@ -381,7 +382,7 @@ printf("bteq mainloop.c\n");
 
             /*
              * Increase statement line number counter for each linebreak added
-             * to the query buffer by the last psql_scan() call. There only
+             * to the query buffer by the last bteq_scan() call. There only
              * will be ones to add when navigating to a statement in
              * readline's history containing newlines.
              */
@@ -392,15 +393,15 @@ printf("bteq mainloop.c\n");
                     pset.stmt_lineno++;
             }
 
-            if (scan_result == PSCAN_EOL)
+            if (scan_result == PSCAN_BTEQ_EOL)
                 pset.stmt_lineno++;
 
             /*
              * Send command if semicolon found, or if end of line and we're in
              * single-line mode.
              */
-            if (scan_result == PSCAN_SEMICOLON ||
-                (scan_result == PSCAN_EOL && pset.singleline))
+            if (scan_result == PSCAN_BTEQ_SEMICOLON ||
+                (scan_result == PSCAN_BTEQ_EOL && pset.singleline))
             {
                 /*
                  * Save line in history.  We use history_buf to accumulate
@@ -419,7 +420,7 @@ printf("bteq mainloop.c\n");
                 if (conditional_active(cond_stack))
                 {
                     success = SendQuery(query_buf->data);
-                    slashCmdStatus = success ? BTEQ_CMD_SEND : BTEQ_CMD_ERROR;
+                    dotCmdStatus = success ? BTEQ_CMD_SEND : BTEQ_CMD_ERROR;
                     pset.stmt_lineno = 1;
 
                     /* transfer query to previous_buf by pointer-swapping */
@@ -432,7 +433,7 @@ printf("bteq mainloop.c\n");
                     resetPQExpBuffer(query_buf);
 
                     added_nl_pos = -1;
-                    /* we need not do psql_scan_reset() here */
+                    /* we need not do bteq_scan_reset() here */
                 }
                 else
                 {
@@ -441,12 +442,12 @@ printf("bteq mainloop.c\n");
                         psql_error("query ignored; use \\endif or Ctrl-C to exit current \\if block\n");
                     /* fake an OK result for purposes of loop checks */
                     success = true;
-                    slashCmdStatus = BTEQ_CMD_SEND;
+                    dotCmdStatus = BTEQ_CMD_SEND;
                     pset.stmt_lineno = 1;
                     /* note that query_buf doesn't change state */
                 }
             }
-            else if (scan_result == PSCAN_BACKSLASH)
+            else if (scan_result == PSCAN_BTEQ_DOT)
             {
                 /* handle dot command */
 
@@ -475,12 +476,12 @@ printf("bteq mainloop.c\n");
                 }
 
                 /* execute dot command */
-                slashCmdStatus = HandleDotCmds(scan_state,
+                dotCmdStatus = HandleDotCmds(scan_state,
                                                  cond_stack,
                                                  query_buf,
                                                  previous_buf);
 
-                success = slashCmdStatus != BTEQ_CMD_ERROR;
+                success = dotCmdStatus != BTEQ_CMD_ERROR;
 
                 /*
                  * Resetting stmt_lineno after a dot command isn't
@@ -489,7 +490,7 @@ printf("bteq mainloop.c\n");
                  */
                 pset.stmt_lineno = 1;
 
-                if (slashCmdStatus == BTEQ_CMD_SEND)
+                if (dotCmdStatus == BTEQ_CMD_SEND)
                 {
                     /* should not see this in inactive branch */
                     Assert(conditional_active(cond_stack));
@@ -506,31 +507,31 @@ printf("bteq mainloop.c\n");
                     resetPQExpBuffer(query_buf);
 
                     /* flush any paren nesting info after forced send */
-                    psql_scan_reset(scan_state);
+                    bteq_scan_reset(scan_state);
                 }
-                else if (slashCmdStatus == BTEQ_CMD_NEWEDIT)
+                else if (dotCmdStatus == BTEQ_CMD_NEWEDIT)
                 {
                     /* should not see this in inactive branch */
                     Assert(conditional_active(cond_stack));
                     /* rescan query_buf as new input */
-                    psql_scan_finish(scan_state);
+                    bteq_scan_finish(scan_state);
                     free(line);
                     line = pg_strdup(query_buf->data);
                     resetPQExpBuffer(query_buf);
                     /* reset parsing state since we are rescanning whole line */
-                    psql_scan_reset(scan_state);
-                    psql_scan_setup(scan_state, line, strlen(line),
+                    bteq_scan_reset(scan_state);
+                    bteq_scan_setup(scan_state, line, strlen(line),
                                     pset.encoding, standard_strings());
                     line_saved_in_history = false;
-                    prompt_status = PROMPT_READY;
+                    prompt_status = PROMPT_BTEQ_READY;
                 }
-                else if (slashCmdStatus == BTEQ_CMD_TERMINATE)
+                else if (dotCmdStatus == BTEQ_CMD_TERMINATE)
                     break;
             }
 
             /* fall out of loop if lexer reached EOL */
-            if (scan_result == PSCAN_INCOMPLETE ||
-                scan_result == PSCAN_EOL)
+            if (scan_result == PSCAN_BTEQ_INCOMPLETE ||
+                scan_result == PSCAN_BTEQ_EOL)
                 break;
         }
 
@@ -538,10 +539,10 @@ printf("bteq mainloop.c\n");
         if (pset.cur_cmd_interactive && !line_saved_in_history)
             pg_append_history(line, history_buf);
 
-        psql_scan_finish(scan_state);
+        bteq_scan_finish(scan_state);
         free(line);
 
-        if (slashCmdStatus == BTEQ_CMD_TERMINATE)
+        if (dotCmdStatus == BTEQ_CMD_TERMINATE)
         {
             successResult = EXIT_SUCCESS;
             break;
@@ -594,7 +595,7 @@ printf("bteq mainloop.c\n");
      * Check for unbalanced \if-\endifs unless user explicitly quit, or the
      * script is erroring out
      */
-    if (slashCmdStatus != BTEQ_CMD_TERMINATE &&
+    if (dotCmdStatus != BTEQ_CMD_TERMINATE &&
         successResult != EXIT_USER &&
         !conditional_stack_empty(cond_stack))
     {
@@ -616,7 +617,7 @@ printf("bteq mainloop.c\n");
     destroyPQExpBuffer(previous_buf);
     destroyPQExpBuffer(history_buf);
 
-    psql_scan_destroy(scan_state);
+    bteq_scan_destroy(scan_state);
     conditional_stack_destroy(cond_stack);
 
     pset.cur_cmd_source = prev_cmd_source;

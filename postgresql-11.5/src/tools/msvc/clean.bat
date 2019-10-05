@@ -103,7 +103,9 @@ if %DIST%==1 if exist src\pl\plpgsql\src\pl_gram.c del /q src\pl\plpgsql\src\pl_
 if %DIST%==1 if exist src\pl\plpgsql\src\pl_gram.h del /q src\pl\plpgsql\src\pl_gram.h
 
 if %DIST%==1 if exist src\fe_utils\psqlscan.c del /q src\fe_utils\psqlscan.c
-if %DIST%==1 if exist src\bin\psql\psqlscanslash.c del /q src\bin\psql\psqlscanslash.c
+if %DIST%==1 if exist src\fe_utils\bteqscan.c del /q src\fe_utils\bteqscan.c
+if %DIST%==1 if exist src\bin\psql\psqlscanslash.c del /q src\bin\psql\psqlscanslash.
+if %DIST%==1 if exist src\bin\psql\bteqscandot.c del /q src\bin\psql\bteqscandot.c
 if %DIST%==1 if exist src\bin\pgbench\exprscan.c del /q src\bin\pgbench\exprscan.c
 if %DIST%==1 if exist src\bin\pgbench\exprparse.c del /q src\bin\pgbench\exprparse.c
 

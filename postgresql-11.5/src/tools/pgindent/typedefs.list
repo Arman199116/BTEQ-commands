@@ -1811,10 +1811,15 @@ PrsStorage
 PruneState
 PruneStepResult
 PsqlScanCallbacks
+BteqScanCallbacks
 PsqlScanQuoteType
+BteqScanQuoteType
 PsqlScanResult
+BteqScanResult
 PsqlScanState
 PsqlScanStateData
+BteqScanState
+BteqScanStateData
 PsqlSettings
 Publication
 PublicationActions
@@ -2209,6 +2214,7 @@ SplitLR
 SplitVar
 SplitedPageLayout
 StackElem
+StackElemBteq
 StartBlobPtrType
 StartBlobsPtrType
 StartDataPtrType
@@ -3042,6 +3048,7 @@ proclist_head
 proclist_mutable_iter
 proclist_node
 promptStatus_t
+promptStatus_bteq_t
 pthread_attr_t
 pthread_key_t
 pthread_mutex_t
