@@ -19,7 +19,7 @@ include $(top_builddir)/src/Makefile.global
 
 override CPPFLAGS := -DFRONTEND -I$(libpq_srcdir) $(CPPFLAGS)
 
-OBJS = mbprint.o print.o printbteq.o psqlscan.o simple_list.o string_utils.o conditional.o
+OBJS = mbprint.o print.o printbteq.o psqlscan.o bteqscan.o simple_list.o string_utils.o conditional.o
 
 all: libpgfeutils.a
 
@@ -31,7 +31,11 @@ psqlscan.c: FLEXFLAGS = -Cfe -p -p
 psqlscan.c: FLEX_NO_BACKUP=yes
 psqlscan.c: FLEX_FIX_WARNING=yes
 
-distprep: psqlscan.c
+bteqscan.c: FLEXFLAGS = -Cfe -p -p
+bteqscan.c: FLEX_NO_BACKUP=yes
+bteqscan.c: FLEX_FIX_WARNING=yes
+
+distprep: psqlscan.c bteqscan.c
 
 # libpgfeutils could be useful to contrib, so install it
 install: all installdirs
@@ -46,7 +50,7 @@ uninstall:
 clean distclean:
 	rm -f libpgfeutils.a $(OBJS) lex.backup
 
-# psqlscan.c is supposed to be in the distribution tarball,
+# psqlscan.c bteqscan.c is supposed to be in the distribution tarball,
 # so do not clean it in the clean/distclean rules
 maintainer-clean: distclean
-	rm -f psqlscan.c
+	rm -f psqlscan.c bteqscan.c
