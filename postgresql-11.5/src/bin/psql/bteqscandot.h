@@ -9,6 +9,7 @@
 #define BTEQSCANDOT_H
 
 #include "fe_utils/bteqscan.h"
+#include <regex.h>
 
 
 /* Different ways for scan_dot_option to handle parameter words */
@@ -36,5 +37,4 @@ extern int    bteq_scan_get_paren_depth(BteqScanState state);
 extern void bteq_scan_set_paren_depth(BteqScanState state, int depth);
 
 extern void dequote_downcase_identifier_bteq(char *str, bool downcase, int encoding);
-
 #endif   /* BTEQSCANDOT_H */

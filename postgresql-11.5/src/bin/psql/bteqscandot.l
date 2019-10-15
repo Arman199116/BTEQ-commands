@@ -727,6 +727,8 @@ bteq_scan_set_paren_depth(BteqScanState state, int depth)
  * string like "foo"."bar" to be treated as one option, so there's little
  * choice; this routine doesn't get to change the token boundaries.
  */
+
+
 void
 dequote_downcase_identifier_bteq(char *str, bool downcase, int encoding)
 {

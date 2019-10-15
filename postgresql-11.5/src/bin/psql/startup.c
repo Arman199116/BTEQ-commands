@@ -17,6 +17,7 @@
 #include "getopt_long.h"
 
 #include "command.h"
+#include "commandbteq.h"
 #include "common.h"
 #include "describe.h"
 #include "help.h"
@@ -80,6 +81,8 @@ struct adhoc_opts
 
 static void parse_psql_options(int argc, char *argv[],
 				   struct adhoc_opts *options);
+static void parse_bteq_options(int argc, char *argv[],
+				   struct adhoc_opts *options);
 static void simple_action_list_append(SimpleActionList *list,
 						  enum _actions action, const char *val);
 static void process_psqlrc(char *argv0);
@@ -117,6 +120,23 @@ main(int argc, char *argv[])
 			showVersion();
 			exit(EXIT_SUCCESS);
 		}
+
+		if (strcmp(argv[1], "--mode") == 0 || strcmp(argv[1], "-m") == 0)
+		{
+			char *ptr;
+			if (argv[2]) {
+				pset.mode = strtol(argv[2],&ptr,10);
+				if (pset.mode != 0 && pset.mode != 1) {
+					printf("Incorrect mode\n");
+					exit(EXIT_FAILURE);
+				}
+				if (strlen(ptr) > 0) {
+					printf("Incorrect mode number\n");
+					exit(EXIT_FAILURE);
+				}
+			}
+		}
+
 	}
 
 #ifdef WIN32
@@ -174,18 +194,22 @@ main(int argc, char *argv[])
 	SetVariable(pset.vars, "PROMPT2", DEFAULT_PROMPT2);
 	SetVariable(pset.vars, "PROMPT3", DEFAULT_PROMPT3);
 
-	parse_psql_options(argc, argv, &options);
+	if (pset.mode == 0) {
+		parse_psql_options(argc, argv, &options);
+	} else {
+		parse_bteq_options(argc, argv, &options);
+	}
 
 	/*
 	 * If no action was specified and we're in non-interactive mode, treat it
 	 * as if the user had specified "-f -".  This lets single-transaction mode
 	 * work in this case.
 	 */
-	if (options.actions.head == NULL && pset.notty)
+	if (pset.mode == 0 && options.actions.head == NULL && pset.notty)
 		simple_action_list_append(&options.actions, ACT_FILE, NULL);
 
 	/* Bail out if -1 was specified but will be ignored. */
-	if (options.single_txn && options.actions.head == NULL)
+	if (pset.mode == 0 && options.single_txn && options.actions.head == NULL)
 	{
 		fprintf(stderr, _("%s: -1 can only be used in non-interactive mode\n"), pset.progname);
 		exit(EXIT_FAILURE);
@@ -216,69 +240,69 @@ main(int argc, char *argv[])
 	}
 
 	/* loop until we have a password if requested by backend */
-	do
-	{
-#define PARAMS_ARRAY_SIZE	8
-		const char **keywords = pg_malloc(PARAMS_ARRAY_SIZE * sizeof(*keywords));
-		const char **values = pg_malloc(PARAMS_ARRAY_SIZE * sizeof(*values));
-
-		keywords[0] = "host";
-		values[0] = options.host;
-		keywords[1] = "port";
-		values[1] = options.port;
-		keywords[2] = "user";
-		values[2] = options.username;
-		keywords[3] = "password";
-		values[3] = have_password ? password : NULL;
-		keywords[4] = "dbname"; /* see do_connect() */
-		values[4] = (options.list_dbs && options.dbname == NULL) ?
-			"postgres" : options.dbname;
-		keywords[5] = "fallback_application_name";
-		values[5] = pset.progname;
-		keywords[6] = "client_encoding";
-		values[6] = (pset.notty || getenv("PGCLIENTENCODING")) ? NULL : "auto";
-		keywords[7] = NULL;
-		values[7] = NULL;
-
-		new_pass = false;
-		pset.db = PQconnectdbParams(keywords, values, true);
-		free(keywords);
-		free(values);
-
-		if (PQstatus(pset.db) == CONNECTION_BAD &&
-			PQconnectionNeedsPassword(pset.db) &&
-			!have_password &&
-			pset.getPassword != TRI_NO)
+	if (pset.mode == 0) {
+		do
 		{
-			/*
-			 * Before closing the old PGconn, extract the user name that was
-			 * actually connected with --- it might've come out of a URI or
-			 * connstring "database name" rather than options.username.
-			 */
-			const char *realusername = PQuser(pset.db);
-			char	   *password_prompt;
+#define PARAMS_ARRAY_SIZE	8
+			const char **keywords = pg_malloc(PARAMS_ARRAY_SIZE * sizeof(*keywords));
+			const char **values = pg_malloc(PARAMS_ARRAY_SIZE * sizeof(*values));
 
-			if (realusername && realusername[0])
-				password_prompt = psprintf(_("Password for user %s: "),
-										   realusername);
-			else
-				password_prompt = pg_strdup(_("Password: "));
+			keywords[0] = "host";
+			values[0] = options.host;
+			keywords[1] = "port";
+			values[1] = options.port;
+			keywords[2] = "user";
+			values[2] = options.username;
+			keywords[3] = "password";
+			values[3] = have_password ? password : NULL;
+			keywords[4] = "dbname"; /* see do_connect() */
+			values[4] = (options.list_dbs && options.dbname == NULL) ?
+											"postgres" : options.dbname;
+			keywords[5] = "fallback_application_name";
+			values[5] = pset.progname;
+			keywords[6] = "client_encoding";
+			values[6] = (pset.notty || getenv("PGCLIENTENCODING")) ? NULL : "auto";
+			keywords[7] = NULL;
+			values[7] = NULL;
+			new_pass = false;
+			pset.db = PQconnectdbParams(keywords, values, true);
+			free(keywords);
+			free(values);
+
+			if (PQstatus(pset.db) == CONNECTION_BAD &&
+				PQconnectionNeedsPassword(pset.db) &&
+				!have_password &&
+				pset.getPassword != TRI_NO)
+			{
+				/*
+				* Before closing the old PGconn, extract the user name that was
+				* actually connected with --- it might've come out of a URI or
+				* connstring "database name" rather than options.username.
+				*/
+				const char *realusername = PQuser(pset.db);
+				char	   *password_prompt;
+
+				if (realusername && realusername[0])
+					password_prompt = psprintf(_("Password for user %s: "),
+											realusername);
+				else
+					password_prompt = pg_strdup(_("Password: "));
+				PQfinish(pset.db);
+				simple_prompt(password_prompt, password, sizeof(password), false);
+				free(password_prompt);
+				have_password = true;
+				new_pass = true;
+			}
+
+		} while (new_pass);
+
+		if (PQstatus(pset.db) == CONNECTION_BAD)
+		{
+			fprintf(stderr, "%s: %s", pset.progname, PQerrorMessage(pset.db));
 			PQfinish(pset.db);
-
-			simple_prompt(password_prompt, password, sizeof(password), false);
-			free(password_prompt);
-			have_password = true;
-			new_pass = true;
+			exit(EXIT_BADCONN);
 		}
-	} while (new_pass);
-
-	if (PQstatus(pset.db) == CONNECTION_BAD)
-	{
-		fprintf(stderr, "%s: %s", pset.progname, PQerrorMessage(pset.db));
-		PQfinish(pset.db);
-		exit(EXIT_BADCONN);
 	}
-
 	setup_cancel_handler();
 
 	PQsetNoticeProcessor(pset.db, NoticeProcessor, NULL);
@@ -360,19 +384,21 @@ main(int argc, char *argv[])
 								pset.encoding, standard_strings());
 				cond_stack = conditional_stack_create();
 				psql_scan_set_passthrough(scan_state, (void *) cond_stack);
-
 				successResult = HandleSlashCmds(scan_state,
 												cond_stack,
 												NULL,
 												NULL) != PSQL_CMD_ERROR
 					? EXIT_SUCCESS : EXIT_FAILURE;
-
 				psql_scan_destroy(scan_state);
 				conditional_stack_destroy(cond_stack);
 			}
 			else if (cell->action == ACT_FILE)
 			{
-				successResult = process_file(cell->val, false);
+				if (pset.mode == 0) {
+					successResult = process_file(cell->val, false);
+				} else {
+					successResult = process_file_bteq(cell->val, false);
+				}
 			}
 			else
 			{
@@ -407,9 +433,11 @@ error:
 	 */
 	else
 	{
+
 		connection_warnings(true);
 		if (!pset.quiet)
 			printf(_("Type \"help\" for help.\n\n"));
+		
 		initializeInput(options.no_readline ? 0 : 1);
 		if (pset.mode == 1) {
 			successResult = MainLoopBteq(stdin);
@@ -481,7 +509,7 @@ parse_psql_options(int argc, char *argv[], struct adhoc_opts *options)
 
 	memset(options, 0, sizeof *options);
 
-	while ((c = getopt_long(argc, argv, "aAbc:d:eEf:F:h:HlL:no:p:P:qR:sStT:U:v:VwWxXz?01",
+	while ((c = getopt_long(argc, argv, "aAbc:d:eEf:F:h:HlL:mno:p:P:qR:sStT:U:v:VwWxXz?01",
 							long_options, &optindex)) != -1)
 	{
 		switch (c)
@@ -536,7 +564,6 @@ parse_psql_options(int argc, char *argv[], struct adhoc_opts *options)
 				options->logfilename = pg_strdup(optarg);
 				break;
 			case 'm':
-				pset.mode = atoi(optarg);
 				break;
 			case 'n':
 				options->no_readline = true;
@@ -689,6 +716,41 @@ parse_psql_options(int argc, char *argv[], struct adhoc_opts *options)
 					pset.progname, argv[optind]);
 
 		optind++;
+	}
+}
+
+
+static void
+parse_bteq_options(int argc, char *argv[], struct adhoc_opts *options) {
+	static struct option long_options[] =
+	{
+		{"mode", required_argument, NULL, 'm'},
+		{NULL, 0, NULL, 0}
+	};
+
+	int			optindex;
+	int			c;
+
+	memset(options, 0, sizeof *options);
+
+	while ((c = getopt_long(argc, argv, "m",
+							long_options, &optindex)) != -1)
+	{
+		switch (c)
+		{
+			case 'm':
+				if (strcmp(argv[2],"<") == 0 && argv[3]) {
+					simple_action_list_append(&options->actions,
+										  ACT_FILE,
+										  argv[3]);
+				}
+				break;
+			default:
+				fprintf(stderr, _("Try \"%s --help\" for more information.\n"),
+						pset.progname);
+				exit(EXIT_FAILURE);
+				break;
+		}
 	}
 }
 
