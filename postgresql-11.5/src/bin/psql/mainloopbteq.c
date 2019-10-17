@@ -73,9 +73,11 @@ MainLoopBteq(FILE *source)
         psql_error("out of memory\n");
         exit(EXIT_FAILURE);
     }
-    if(PQstatus(pset.db) == CONNECTION_BAD ) {
+
+    if (PQstatus(pset.db) == CONNECTION_BAD ) {
         printf("Enter your logon or BTEQ command\n");
     }
+
     /* main loop to get queries and execute them */
     while (successResult == EXIT_SUCCESS)
     {
@@ -92,9 +94,9 @@ MainLoopBteq(FILE *source)
                 successResult = EXIT_USER;
                 break;
             }
-
             cancel_pressed_bteq = false;
         }
+
         /*
          * Establish longjmp destination for exiting from wait-for-input. We
          * must re-do this each time through the loop for safety, since the
@@ -474,6 +476,7 @@ MainLoopBteq(FILE *source)
                     pg_send_history(history_buf);
                     line_saved_in_history = true;
                 }
+
                 /* execute dot command */
                 dotCmdStatus = HandleDotCmds(scan_state,
                                             cond_stack,

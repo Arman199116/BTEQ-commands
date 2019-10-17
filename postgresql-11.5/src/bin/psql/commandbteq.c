@@ -70,7 +70,6 @@ static void copy_previous_query(PQExpBuffer query_buf, PQExpBuffer previous_buf)
 static bool do_connect(enum trivalue reuse_previous_specification,
                        char *dbname, char *user, char *host, char *port,
                        char *password);
-
 static void printSSLInfo(void);
 
 #ifdef WIN32
@@ -209,11 +208,11 @@ exec_command(const char *cmd,
                    cmd);
     }
 
-    if(strcasecmp(cmd, "logon") == 0) {
+    if (strcasecmp(cmd, "logon") == 0) {
         status = exec_command_logon(scan_state, active_branch);
-    } else if(strcasecmp(cmd, "set") == 0) {
+    } else if (strcasecmp(cmd, "set") == 0) {
         status = exec_command_set(scan_state, active_branch);
-    } else if(strcasecmp(cmd, "quit") == 0 || strcasecmp(cmd, "q") == 0) {
+    } else if (strcasecmp(cmd, "quit") == 0 || strcasecmp(cmd, "q") == 0) {
         status = exec_command_quit(scan_state, active_branch);
     } else {
         status = BTEQ_CMD_UNKNOWN;
@@ -231,30 +230,24 @@ exec_command(const char *cmd,
 
 
 void
-extract_token(char *command, char *delimiter, char *left, char *right) {
+extract_token(char *command, char *delimiter, char **left, char **right) {
 
-    if (command == "" || command == NULL) {
+    if (command == NULL || strcasecmp(command, "") == 0 ) {
         return;
     }
     char *command_dup = strdup(command);
 
-	char *tmp;
-	tmp = strtok(command_dup, delimiter);
+    char *tmp;
+    tmp = strtok(command_dup, delimiter);
+
     if (tmp != NULL) {
-    	strcpy(left, tmp );
-    } else {
-    	left = NULL;
+       *left = strdup(tmp);
     }
     if (left != NULL) {
-
-    	tmp = strtok(NULL,delimiter);
-    	if (tmp != NULL) {
-    		strcpy(right, tmp);
-    	} else {
-    		right = NULL;
-    	}
-    } else {
-        right = NULL;
+        tmp = strtok(NULL,delimiter);
+        if (tmp != NULL) {
+            *right = strdup(tmp);
+        }
     }
     free(command_dup);
 }
@@ -268,56 +261,57 @@ extract_token(char *command, char *delimiter, char *left, char *right) {
 static dotResult
 exec_command_logon(BteqScanState scan_state, bool active_branch)
 {
-    char *host_port = (char*)calloc(100,sizeof(char));
-    char *user_pass = (char*)calloc(100,sizeof(char));
-    char *host = (char*)calloc(50,sizeof(char));
-    char *port = (char*)calloc(50,sizeof(char));
-    char *user = (char*)calloc(50,sizeof(char));
-    char *pass = (char*)calloc(50,sizeof(char));
+    char *host_port = NULL;
+    char *user_pass = NULL;
+    char *host = NULL;
+    char *port = NULL;
+    char *user = NULL;
+    char *pass = NULL;
 
     char *logon = bteq_scan_dot_option(scan_state, OT_BTEQ_WHOLE_LINE,
                                        NULL, false);
     logon = cat_space(logon);
-    extract_token(logon, "/", host_port, user_pass);
-    extract_token(host_port, ":", host, port);
-    extract_token(user_pass, ",", user, pass);
+    if (logon != NULL) {
+    	extract_token(logon, "/", &host_port, &user_pass);
+    }
+
+    if (host_port != NULL) {
+    	extract_token(host_port, ":", &host, &port);
+    }
+
+    if (user_pass != NULL) {
+    	extract_token(user_pass, ",", &user, &pass);
+    }
 
     bool success = true;
 
-    if (strlen(host) == 0 || strlen(user) == 0) {
+    if (host == NULL || user == NULL) {
         psql_error("All connection parameters must be supplied because no "
                    "database connection exists\n");
-        return BTEQ_CMD_ERROR;
+        success = false;
+        goto cleanup;
     }
-    if (pset.cur_cmd_interactive) {
 
-        if (user[strlen(user)-1] == ';' || user[strlen(user)-1] == ' '
-                                        || user[strlen(user)-1] == '\t') {
-            user[strlen(user)-1] = '\0';
+    if (pset.cur_cmd_interactive) {
+        if (user) {
+            user = cat_space(user);
         }
-        if (pass != NULL && strlen(pass)>0) {
+        if (pass != NULL && strlen(pass) > 0) {
 
             printf("Invalid logon!\n");
-            free(logon);
-            free(host_port);
-            free(user_pass);
-            free(host);
-            free(port);
-            free(user);
-            free(pass);
-
-            return BTEQ_CMD_ERROR;
+            success = false;
+            goto cleanup;
         }
+        pass = (char*)malloc(50*sizeof(char));
         simple_prompt("Password ", pass, 50, false);
     } else {
-        if (pass[strlen(pass)-1] == ';' || pass[strlen(pass)-1] == ' '
-                                        || user[strlen(user)-1] == '\t') {
-            pass[strlen(pass)-1] = '\0';
+        if (pass) {
+            pass = cat_space(pass);
         }
     }
 
     success = do_connect(TRI_NO, NULL, user, host, port, pass);
-
+cleanup:
     free(logon);
     free(host_port);
     free(user_pass);
@@ -325,7 +319,6 @@ exec_command_logon(BteqScanState scan_state, bool active_branch)
     free(port);
     free(user);
     free(pass);
-
     return success ? BTEQ_CMD_SKIP_LINE : BTEQ_CMD_ERROR;
 }
 
@@ -446,32 +439,6 @@ copy_previous_query(PQExpBuffer query_buf, PQExpBuffer previous_buf)
 
 
 /*
- * Ask the user for a password; 'username' is the username the
- * password is for, if one has been explicitly specified. Returns a
- * malloc'd string.
- */
-
-
-static char *
-prompt_for_password(const char *username)
-{
-    char        buf[100];
-
-    if (username == NULL || username[0] == '\0')
-        simple_prompt("Password: ", buf, sizeof(buf), false);
-    else
-    {
-        char       *prompt_text;
-
-        prompt_text = psprintf(_("Password for user %s: "), username);
-        simple_prompt(prompt_text, buf, sizeof(buf), false);
-        free(prompt_text);
-    }
-    return pg_strdup(buf);
-}
-
-
-/*
  * do_connect -- handler for .logon
  *
  * Connects to a database with given parameters. Absent an established
@@ -546,8 +513,9 @@ do_connect(enum trivalue reuse_previous_specification,
     if (PQstatus(pset.db) == CONNECTION_BAD) {
         fprintf(stderr, "%s: %s", pset.progname, PQerrorMessage(pset.db));
         PQfinish(pset.db);
-        exit(EXIT_BADCONN);
+        exit(EXIT_FAILURE);
     }
+    return true;
 }
 
 
@@ -740,15 +708,22 @@ read_connect_arg(BteqScanState scan_state)
 
 static char *
 cat_space(char *str) {
-    if (str == "" || str == NULL) {
+    size_t len = 0;
+    if (str == NULL || strcasecmp(str,"") == 0) {
         return "";
     }
-    size_t len = strlen(str)-1;
+
+    len = strlen(str)-1;
     while (str[len] == ' ' || str[len] == '\t' || str[len] == '\r') {
         str[len--] = '\0';
     }
+
     while ((*str == ' '|| str[len] == '\t' || str[len] == '\r') && *str != '\0') {
         str++;
+    }
+
+    if (str[len] == ';') {
+        str[len] = '\0';
     }
     return str;
 }
