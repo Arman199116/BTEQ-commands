@@ -580,7 +580,6 @@ _print_horizontal_line(const unsigned int ncolumns, const unsigned int *widths,
 static void
 print_aligned_text_bteq(const printTableContentBteq *cont, FILE *fout, bool is_pager)
 {
-    printf("print_aligned_text_bteq\n");
     bool        opt_tuples_only = cont->opt->tuples_only;
     int            encoding = cont->opt->encoding;
     unsigned short opt_border = cont->opt->border;
@@ -3311,7 +3310,6 @@ void
 printQuerybteq(const PGresult *result, const printQueryOptBteq *opt,
            FILE *fout, bool is_pager, FILE *flog)
 {
-    printf("printbteq.c\n");
     printTableContentBteq cont;
     int            i,
                 r,

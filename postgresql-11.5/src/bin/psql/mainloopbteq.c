@@ -46,7 +46,6 @@ MainLoopBteq(FILE *source)
     FILE       *prev_cmd_source;
     bool        prev_cmd_interactive;
     uint64        prev_lineno;
-printf("bteq mainloop.c\n");
     /* Save the prior command source */
     prev_cmd_source = pset.cur_cmd_source;
     prev_cmd_interactive = pset.cur_cmd_interactive;
@@ -75,6 +74,10 @@ printf("bteq mainloop.c\n");
         exit(EXIT_FAILURE);
     }
 
+    if (PQstatus(pset.db) == CONNECTION_BAD ) {
+        printf("Enter your logon or BTEQ command\n");
+    }
+
     /* main loop to get queries and execute them */
     while (successResult == EXIT_SUCCESS)
     {
@@ -91,7 +94,6 @@ printf("bteq mainloop.c\n");
                 successResult = EXIT_USER;
                 break;
             }
-
             cancel_pressed_bteq = false;
         }
 
@@ -477,10 +479,9 @@ printf("bteq mainloop.c\n");
 
                 /* execute dot command */
                 dotCmdStatus = HandleDotCmds(scan_state,
-                                                 cond_stack,
-                                                 query_buf,
-                                                 previous_buf);
-
+                                            cond_stack,
+                                            query_buf,
+                                            previous_buf);
                 success = dotCmdStatus != BTEQ_CMD_ERROR;
 
                 /*
