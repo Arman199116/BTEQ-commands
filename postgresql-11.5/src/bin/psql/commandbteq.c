@@ -65,6 +65,11 @@ static dotResult exec_command_set(BteqScanState scan_state, bool active_branch);
 static void ignore_dot_options(BteqScanState scan_state);
 static bool is_branching_command(const char *cmd);
 static char *cat_space(char *str);
+static dotResult exec_command_connect(BteqScanState scan_state, bool active_branch);
+static bool do_connect_db(enum trivalue reuse_previous_specification,
+           char *dbname, char *user, char *host, char *port);
+static char *prompt_for_password(const char *username);
+static bool param_is_newly_set(const char *old_val, const char *new_val);
 
 static void copy_previous_query(PQExpBuffer query_buf, PQExpBuffer previous_buf);
 static bool do_connect(enum trivalue reuse_previous_specification,
@@ -214,6 +219,8 @@ exec_command(const char *cmd,
         status = exec_command_set(scan_state, active_branch);
     } else if (strcasecmp(cmd, "quit") == 0 || strcasecmp(cmd, "q") == 0) {
         status = exec_command_quit(scan_state, active_branch);
+    } else if (strcmp(cmd, "c") == 0 || strcmp(cmd, "connect") == 0) {
+        status = exec_command_connect(scan_state, active_branch);
     } else {
         status = BTEQ_CMD_UNKNOWN;
     }
@@ -270,17 +277,17 @@ exec_command_logon(BteqScanState scan_state, bool active_branch)
 
     char *logon = bteq_scan_dot_option(scan_state, OT_BTEQ_WHOLE_LINE,
                                        NULL, false);
-    logon = cat_space(logon);
     if (logon != NULL) {
-    	extract_token(logon, "/", &host_port, &user_pass);
+        logon = cat_space(logon);
+        extract_token(logon, "/", &host_port, &user_pass);
     }
 
     if (host_port != NULL) {
-    	extract_token(host_port, ":", &host, &port);
+        extract_token(host_port, ":", &host, &port);
     }
 
     if (user_pass != NULL) {
-    	extract_token(user_pass, ",", &user, &pass);
+        extract_token(user_pass, ",", &user, &pass);
     }
 
     bool success = true;
@@ -345,43 +352,29 @@ static dotResult
 exec_command_set(BteqScanState scan_state, bool active_branch)
 {
     bool        success = true;
-
+    char        quote;
     if (active_branch)
     {
-        char       *opt0 = bteq_scan_dot_option(scan_state,
-                                                  OT_BTEQ_NORMAL, NULL, false);
-
-        if (!opt0)
+        char *opt0 = read_connect_arg(scan_state);
+        if (opt0)
         {
-            /* list all variables */
-            PrintVariables(pset.vars);
-            success = true;
-        }
-        else
-        {
-            /*
-             * Set variable to the concatenation of the arguments.
-             */
-            char       *newval;
             char       *opt;
+            char       *ptr;
+            opt = read_connect_arg(scan_state);
+            if (opt && strcasecmp(opt0, "width") == 0) {
 
-            opt = bteq_scan_dot_option(scan_state,
-                                         OT_BTEQ_NORMAL, NULL, false);
-            newval = pg_strdup(opt ? opt : "");
-            free(opt);
-
-            while ((opt = bteq_scan_dot_option(scan_state,
-                                                 OT_BTEQ_NORMAL, NULL, false)))
-            {
-                newval = pg_realloc(newval, strlen(newval) + strlen(opt) + 1);
-                strcat(newval, opt);
-                free(opt);
+                int tmp = strtol(opt, &ptr, 10);
+                if (*ptr) {
+                    printf("Incorrect width number argument\n");
+                    success = false;
+                } else if (tmp < 20 || tmp > 1048575) {
+                    printf("*** Error: Width value must be in the 20..1048575 range.\n");
+                    success = false;
+                } else {
+                    pset.popt_bteq.topt.table_width = tmp;
+                }
             }
-
-            if (!SetVariable(pset.vars, opt0, newval))
-                success = false;
-
-            free(newval);
+            free(opt);
         }
         free(opt0);
     }
@@ -621,7 +614,7 @@ checkWin32Codepage(void)
 
 
 /*
- * SyncVariables
+ * SyncVariablesbteq
  *
  * Make bteq's internal variables agree with connection state upon
  * establishing a new connection.
@@ -643,7 +636,7 @@ SyncVariablesbteq(void)
     SetVariable(pset.vars, "PORT", PQport(pset.db));
     SetVariable(pset.vars, "ENCODING", pg_encoding_to_char(pset.encoding));
 
-    /* this bit should match connection_warnings(): */
+    /* this bit should match connection_warningsbteq(): */
     /* Try to get full text form of version, might include "devel" etc */
     server_version = PQparameterStatus(pset.db, "server_version");
     /* Otherwise fall back on pset.sversion */
@@ -705,7 +698,6 @@ read_connect_arg(BteqScanState scan_state)
 /*
 * cat spaces
 */
-
 static char *
 cat_space(char *str) {
     size_t len = 0;
@@ -718,7 +710,7 @@ cat_space(char *str) {
         str[len--] = '\0';
     }
 
-    while ((*str == ' '|| str[len] == '\t' || str[len] == '\r') && *str != '\0') {
+    while ((*str == ' '|| *str == '\t' || *str == '\r') && *str != '\0') {
         str++;
     }
 
@@ -796,4 +788,361 @@ process_file_bteq(char *filename, bool use_relative_path)
 
     pset.inputfile = oldfilename;
     return result;
+}
+
+
+/*
+ * .c or .connect -- connect to database using the specified parameters.
+ *
+ * .c [-reuse-previous=BOOL] dbname user host port
+ *
+ * Specifying a parameter as '-' is equivalent to omitting it.  Examples:
+ *
+ * .c - - hst        Connect to current database on current port of
+ *                    host "hst" as current user.
+ * .c - usr - prt    Connect to current database on port "prt" of current host
+ *                    as user "usr".
+ * .c dbs            Connect to database "dbs" on current port of current host
+ *                    as current user.
+ */
+static dotResult
+exec_command_connect(BteqScanState scan_state, bool active_branch)
+{
+    bool        success = true;
+
+    if (active_branch)
+    {
+        static const char prefix[] = "-reuse-previous=";
+        char       *opt1,
+                   *opt2,
+                   *opt3,
+                   *opt4;
+        enum trivalue reuse_previous = TRI_DEFAULT;
+
+        opt1 = read_connect_arg(scan_state);
+        if (opt1 != NULL && strncmp(opt1, prefix, sizeof(prefix) - 1) == 0)
+        {
+            bool        on_off;
+
+            success = ParseVariableBool(opt1 + sizeof(prefix) - 1,
+                                        "-reuse-previous",
+                                        &on_off);
+            if (success)
+            {
+                reuse_previous = on_off ? TRI_YES : TRI_NO;
+                free(opt1);
+                opt1 = read_connect_arg(scan_state);
+            }
+        }
+
+        if (success)            /* give up if reuse_previous was invalid */
+        {
+            opt2 = read_connect_arg(scan_state);
+            opt3 = read_connect_arg(scan_state);
+            opt4 = read_connect_arg(scan_state);
+
+            success = do_connect_db(reuse_previous, opt1, opt2, opt3, opt4);
+
+            free(opt2);
+            free(opt3);
+            free(opt4);
+        }
+        free(opt1);
+    }
+    else
+        ignore_dot_options(scan_state);
+
+    return success ? BTEQ_CMD_SKIP_LINE : BTEQ_CMD_ERROR;
+}
+
+/*
+ * do_connect -- handler for \connect
+ *
+ * Connects to a database with given parameters. Absent an established
+ * connection, all parameters are required. Given -reuse-previous=off or a
+ * connection string without -reuse-previous=on, NULL values will pass through
+ * to PQconnectdbParams(), so the libpq defaults will be used. Otherwise, NULL
+ * values will be replaced with the ones in the current connection.
+ *
+ * In interactive mode, if connection fails with the given parameters,
+ * the old connection will be kept.
+ */
+static bool
+do_connect_db(enum trivalue reuse_previous_specification,
+           char *dbname, char *user, char *host, char *port)
+{
+    PGconn       *o_conn = pset.db,
+               *n_conn;
+    char       *password = NULL;
+    bool        keep_password;
+    bool        has_connection_string;
+    bool        reuse_previous;
+    PQExpBufferData connstr;
+
+    if (!o_conn && (!dbname || !user || !host || !port))
+    {
+        /*
+         * We don't know the supplied connection parameters and don't want to
+         * connect to the wrong database by using defaults, so require all
+         * parameters to be specified.
+         */
+        psql_error("All connection parameters must be supplied because no "
+                   "database connection exists\n");
+        return false;
+    }
+
+    has_connection_string = dbname ?
+        recognized_connection_string(dbname) : false;
+    switch (reuse_previous_specification)
+    {
+        case TRI_YES:
+            reuse_previous = true;
+            break;
+        case TRI_NO:
+            reuse_previous = false;
+            break;
+        default:
+            reuse_previous = !has_connection_string;
+            break;
+    }
+    /* Silently ignore arguments subsequent to a connection string. */
+    if (has_connection_string)
+    {
+        user = NULL;
+        host = NULL;
+        port = NULL;
+    }
+
+    /* grab missing values from the old connection */
+    if (!user && reuse_previous)
+        user = PQuser(o_conn);
+    if (!host && reuse_previous)
+        host = PQhost(o_conn);
+    if (!port && reuse_previous)
+        port = PQport(o_conn);
+
+    /*
+     * Any change in the parameters read above makes us discard the password.
+     * We also discard it if we're to use a conninfo rather than the
+     * positional syntax.
+     */
+    if (has_connection_string)
+        keep_password = false;
+    else
+        keep_password =
+            (user && PQuser(o_conn) && strcmp(user, PQuser(o_conn)) == 0) &&
+            (host && PQhost(o_conn) && strcmp(host, PQhost(o_conn)) == 0) &&
+            (port && PQport(o_conn) && strcmp(port, PQport(o_conn)) == 0);
+
+    /*
+     * Grab missing dbname from old connection.  No password discard if this
+     * changes: passwords aren't (usually) database-specific.
+     */
+    if (!dbname && reuse_previous)
+    {
+        initPQExpBuffer(&connstr);
+        appendPQExpBuffer(&connstr, "dbname=");
+        appendConnStrVal(&connstr, PQdb(o_conn));
+        dbname = connstr.data;
+        /* has_connection_string=true would be a dead store */
+    }
+    else
+        connstr.data = NULL;
+
+    /*
+     * If the user asked to be prompted for a password, ask for one now. If
+     * not, use the password from the old connection, provided the username
+     * etc have not changed. Otherwise, try to connect without a password
+     * first, and then ask for a password if needed.
+     *
+     * XXX: this behavior leads to spurious connection attempts recorded in
+     * the postmaster's log.  But libpq offers no API that would let us obtain
+     * a password and then continue with the first connection attempt.
+     */
+    if (pset.getPassword == TRI_YES)
+    {
+        /*
+         * If a connstring or URI is provided, we can't be sure we know which
+         * username will be used, since we haven't parsed that argument yet.
+         * Don't risk issuing a misleading prompt.  As in startup.c, it does
+         * not seem worth working harder, since this getPassword option is
+         * normally only used in noninteractive cases.
+         */
+        password = prompt_for_password(has_connection_string ? NULL : user);
+    }
+    else if (o_conn && keep_password)
+    {
+        password = PQpass(o_conn);
+        if (password && *password)
+            password = pg_strdup(password);
+        else
+            password = NULL;
+    }
+
+    while (true)
+    {
+#define PARAMS_ARRAY_SIZE    8
+        const char **keywords = pg_malloc(PARAMS_ARRAY_SIZE * sizeof(*keywords));
+        const char **values = pg_malloc(PARAMS_ARRAY_SIZE * sizeof(*values));
+        int            paramnum = -1;
+
+        keywords[++paramnum] = "host";
+        values[paramnum] = host;
+        keywords[++paramnum] = "port";
+        values[paramnum] = port;
+        keywords[++paramnum] = "user";
+        values[paramnum] = user;
+
+        /*
+         * Position in the array matters when the dbname is a connection
+         * string, because settings in a connection string override earlier
+         * array entries only.  Thus, user= in the connection string always
+         * takes effect, but client_encoding= often will not.
+         *
+         * If you change this code, also change the initial-connection code in
+         * main().  For no good reason, a connection string password= takes
+         * precedence in main() but not here.
+         */
+        keywords[++paramnum] = "dbname";
+        values[paramnum] = dbname;
+        keywords[++paramnum] = "password";
+        values[paramnum] = password;
+        keywords[++paramnum] = "fallback_application_name";
+        values[paramnum] = pset.progname;
+        keywords[++paramnum] = "client_encoding";
+        values[paramnum] = (pset.notty || getenv("PGCLIENTENCODING")) ? NULL : "auto";
+
+        /* add array terminator */
+        keywords[++paramnum] = NULL;
+        values[paramnum] = NULL;
+
+        n_conn = PQconnectdbParams(keywords, values, true);
+
+        pg_free(keywords);
+        pg_free(values);
+
+        /* We can immediately discard the password -- no longer needed */
+        if (password)
+            pg_free(password);
+
+        if (PQstatus(n_conn) == CONNECTION_OK)
+            break;
+
+        /*
+         * Connection attempt failed; either retry the connection attempt with
+         * a new password, or give up.
+         */
+        if (!password && PQconnectionNeedsPassword(n_conn) && pset.getPassword != TRI_NO)
+        {
+            /*
+             * Prompt for password using the username we actually connected
+             * with --- it might've come out of "dbname" rather than "user".
+             */
+            password = prompt_for_password(PQuser(n_conn));
+            PQfinish(n_conn);
+            continue;
+        }
+
+        /*
+         * Failed to connect to the database. In interactive mode, keep the
+         * previous connection to the DB; in scripting mode, close our
+         * previous connection as well.
+         */
+        if (pset.cur_cmd_interactive)
+        {
+            psql_error("%s", PQerrorMessage(n_conn));
+
+            /* pset.db is left unmodified */
+            if (o_conn)
+                psql_error("Previous connection kept\n");
+        }
+        else
+        {
+            psql_error("\\connect: %s", PQerrorMessage(n_conn));
+            if (o_conn)
+            {
+                PQfinish(o_conn);
+                pset.db = NULL;
+            }
+        }
+
+        PQfinish(n_conn);
+        if (connstr.data)
+            termPQExpBuffer(&connstr);
+        return false;
+    }
+    if (connstr.data)
+        termPQExpBuffer(&connstr);
+
+    /*
+     * Replace the old connection with the new one, and update
+     * connection-dependent variables.
+     */
+    PQsetNoticeProcessor(n_conn, NoticeProcessor, NULL);
+    pset.db = n_conn;
+    SyncVariablesbteq();
+    connection_warningsbteq(false); /* Must be after SyncVariablesbteq */
+
+    /* Tell the user about the new connection */
+    if (!pset.quiet)
+    {
+        if (!o_conn ||
+            param_is_newly_set(PQhost(o_conn), PQhost(pset.db)) ||
+            param_is_newly_set(PQport(o_conn), PQport(pset.db)))
+        {
+            char       *host = PQhost(pset.db);
+
+            /* If the host is an absolute path, the connection is via socket */
+            if (is_absolute_path(host))
+                printf(_("You are now connected to database \"%s\" as user \"%s\" via socket in \"%s\" at port \"%s\".\n"),
+                       PQdb(pset.db), PQuser(pset.db), host, PQport(pset.db));
+            else
+                printf(_("You are now connected to database \"%s\" as user \"%s\" on host \"%s\" at port \"%s\".\n"),
+                       PQdb(pset.db), PQuser(pset.db), host, PQport(pset.db));
+        }
+        else
+            printf(_("You are now connected to database \"%s\" as user \"%s\".\n"),
+                   PQdb(pset.db), PQuser(pset.db));
+    }
+
+    if (o_conn)
+        PQfinish(o_conn);
+    return true;
+}
+
+
+/*
+ * Ask the user for a password; 'username' is the username the
+ * password is for, if one has been explicitly specified. Returns a
+ * malloc'd string.
+ */
+static char *
+prompt_for_password(const char *username)
+{
+    char        buf[100];
+
+    if (username == NULL || username[0] == '\0')
+        simple_prompt("Password: ", buf, sizeof(buf), false);
+    else
+    {
+        char       *prompt_text;
+
+        prompt_text = psprintf(_("Password for user %s: "), username);
+        simple_prompt(prompt_text, buf, sizeof(buf), false);
+        free(prompt_text);
+    }
+    return pg_strdup(buf);
+}
+
+
+static bool
+param_is_newly_set(const char *old_val, const char *new_val)
+{
+    if (new_val == NULL)
+        return false;
+
+    if (old_val == NULL || strcmp(old_val, new_val) != 0)
+        return true;
+
+    return false;
 }

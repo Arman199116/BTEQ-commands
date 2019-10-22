@@ -862,10 +862,13 @@ static bool
 PrintQueryTuples(const PGresult *results)
 {
 	printQueryOpt my_popt = pset.popt;
+	printQueryOptBteq my_popt_bteq = pset.popt_bteq;
 
 	/* one-shot expanded output requested via \gx */
-	if (pset.g_expanded)
+	if (pset.g_expanded) {
 		my_popt.topt.expanded = 1;
+		my_popt_bteq.topt.expanded = 1;
+	}
 
 	/* write output to \g argument, if any */
 	if (pset.gfname)
@@ -877,7 +880,11 @@ PrintQueryTuples(const PGresult *results)
 			return false;
 		if (is_pipe)
 			disable_sigpipe_trap();
-		printQuery(results, &my_popt, fout, false, pset.logfile);
+		if (pset.mode == 1) {
+			printQuerybteq(results, &my_popt_bteq, fout, false, pset.logfile);
+		} else {
+			printQuery(results, &my_popt, fout, false, pset.logfile);
+		}
 		if (is_pipe)
 		{
 			pclose(fout);
@@ -886,9 +893,9 @@ PrintQueryTuples(const PGresult *results)
 		else
 			fclose(fout);
 	}
-	else { 
+	else {
 		if (pset.mode == 1) {
-			printQuerybteq(results, &my_popt, pset.queryFout, false, pset.logfile);
+			printQuerybteq(results, &my_popt_bteq, pset.queryFout, false, pset.logfile);
 		} else {
 			printQuery(results, &my_popt, pset.queryFout, false, pset.logfile);
 		}
