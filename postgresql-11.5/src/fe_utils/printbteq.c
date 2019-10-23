@@ -1140,7 +1140,7 @@ loop_end:
                             fputnbytes(fout,
                                       (char *) (this_line->ptr + bytes_output[j]),
                                        bytes_to_output);
-                         }
+                        }
                     }
 
                     bytes_output[j] += bytes_to_output;
