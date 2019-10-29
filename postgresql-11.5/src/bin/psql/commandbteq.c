@@ -43,6 +43,9 @@
 #include "settings.h"
 #include "variables.h"
 
+#define MAX_WIDTH 1048575
+#define MIN_WIDTH 20
+
 /*
  * Editable database object types.
  */
@@ -65,7 +68,6 @@ static dotResult exec_command_set(BteqScanState scan_state, bool active_branch);
 static void ignore_dot_options(BteqScanState scan_state);
 static bool is_branching_command(const char *cmd);
 static char *cat_space(char *str);
-static char *prompt_for_password(const char *username);
 static void copy_previous_query(PQExpBuffer query_buf, PQExpBuffer previous_buf);
 static bool do_connect(enum trivalue reuse_previous_specification,
                        char *dbname, char *user, char *host, char *port,
@@ -237,16 +239,16 @@ extract_token(char *command, char *delimiter, char **left, char **right) {
     }
     char *command_dup = strdup(command);
 
-    char *tmp;
-    tmp = strtok(command_dup, delimiter);
+    char *value;
+    value = strtok(command_dup, delimiter);
 
-    if (tmp != NULL) {
-       *left = strdup(tmp);
+    if (value != NULL) {
+       *left = strdup(value);
     }
     if (left != NULL) {
-        tmp = strtok(NULL,delimiter);
-        if (tmp != NULL) {
-            *right = strdup(tmp);
+        value = strtok(NULL,delimiter);
+        if (value != NULL) {
+            *right = strdup(value);
         }
     }
     free(command_dup);
@@ -356,15 +358,15 @@ exec_command_set(BteqScanState scan_state, bool active_branch)
             opt = read_connect_arg(scan_state);
             if (opt && strcasecmp(opt0, "width") == 0) {
 
-                int tmp = strtol(opt, &ptr, 10);
+                int value = strtol(opt, &ptr, 10);
                 if (*ptr) {
-                    printf("Incorrect width number argument\n");
+                    printf("*** Error: WIDTH command keyword must be followed by a number.\n");
                     success = false;
-                } else if (tmp < 20 || tmp > 1048575) {
+                } else if (value < MIN_WIDTH || value > MAX_WIDTH) {
                     printf("*** Error: Width value must be in the 20..1048575 range.\n");
                     success = false;
                 } else {
-                    pset.popt_bteq.topt.table_width = tmp;
+                    pset.popt_bteq.topt.table_width = value;
                 }
             }
             free(opt);
@@ -783,26 +785,3 @@ process_file_bteq(char *filename, bool use_relative_path)
     return result;
 }
 
-
-/*
- * Ask the user for a password; 'username' is the username the
- * password is for, if one has been explicitly specified. Returns a
- * malloc'd string.
- */
-static char *
-prompt_for_password(const char *username)
-{
-    char        buf[100];
-
-    if (username == NULL || username[0] == '\0')
-        simple_prompt("Password: ", buf, sizeof(buf), false);
-    else
-    {
-        char       *prompt_text;
-
-        prompt_text = psprintf(_("Password for user %s: "), username);
-        simple_prompt(prompt_text, buf, sizeof(buf), false);
-        free(prompt_text);
-    }
-    return pg_strdup(buf);
-}

@@ -573,6 +573,8 @@ _print_horizontal_line(const unsigned int ncolumns, const unsigned int *widths,
     fputc('\n', fout);
 }
 
+
+/* draw "line" when given teble width*/
 static void
 _print_horizontal_line_bteq(const unsigned int ncolumns, unsigned int *widths,
                        unsigned short border, printTextRuleBteq pos,
@@ -955,7 +957,6 @@ print_aligned_text_bteq(const printTableContentBteq *cont, FILE *fout, bool is_p
                 {
                     struct lineptr *this_line = col_lineptrs[i] + curr_nl_line;
                     unsigned int nbspace;
-
                     if (cont->table_width) {
                         int border_c = (i+1 != cont->ncolumns ? 1 : 0);
                         if ((width_wrap[i]+2 + border_c) <= table_width) {
@@ -1085,8 +1086,7 @@ loop_end:
                     else if (wrap[j] == PRINT_LINE_WRAP_NEWLINE_BTEQ)
                         fputs(format->nl_left, fout);
                     else {
-                        if (j + 1 == col_count_copy && table_width2 == 0) {}
-                        else {
+                        if (j + 1 != col_count_copy || table_width2 != 0) {
                             fputc(' ', fout);
                         }
                     }
