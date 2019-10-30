@@ -574,16 +574,16 @@ _print_horizontal_line(const unsigned int ncolumns, const unsigned int *widths,
 }
 
 
-/* draw "line" when given teble width*/
+/* draw "line" when given table width*/
 static void
 _print_horizontal_line_bteq(const unsigned int ncolumns, unsigned int *widths,
-                       unsigned short border, printTextRuleBteq pos,
-                       const printTextFormatbteq *format,
-                       FILE *fout)
+                            unsigned short border, printTextRuleBteq pos,
+                            const printTextFormatbteq *format,
+                            FILE *fout)
 {
     const printTextLineFormatBteq *lformat = &format->lrule[pos];
-    unsigned int i,
-                j;
+    unsigned int i = 0;
+    unsigned int j = 0;
 
     for (i = 0; i < ncolumns; i++)
     {
@@ -908,7 +908,7 @@ print_aligned_text_bteq(const printTableContentBteq *cont, FILE *fout, bool is_p
     }
     int table_width = cont->table_width;
     int col_count_copy = 0;
-    int table_width2 = 0;
+    int char_count_in_last_column = 0;
 
     /* time to output */
     if (cont->opt->start_table)
@@ -958,12 +958,12 @@ print_aligned_text_bteq(const printTableContentBteq *cont, FILE *fout, bool is_p
                     struct lineptr *this_line = col_lineptrs[i] + curr_nl_line;
                     unsigned int nbspace;
                     if (cont->table_width) {
-                        int border_c = (i+1 != cont->ncolumns ? 1 : 0);
-                        if ((width_wrap[i]+2 + border_c) <= table_width) {
+                        int border_c = (i + 1 != cont->ncolumns ? 1 : 0);
+                        if ((width_wrap[i] + 2 + border_c) <= table_width) {
                             table_width -= (width_wrap[i] + 2 + border_c);
                             width_wrap_copy[i] = width_wrap[i] + 2;
                         } else {
-                            table_width2 = table_width;
+                            char_count_in_last_column = table_width;
                             int nbspace_r = 0;
                             nbspace = width_wrap[i] - this_line->width + 2;
                             width_wrap_copy[i] = table_width;
@@ -984,7 +984,7 @@ print_aligned_text_bteq(const printTableContentBteq *cont, FILE *fout, bool is_p
 
                             fprintf(fout, "%-*s%s%-*s",
                                     (nbspace ) / 2, "", this_line->ptr,
-                                    (nbspace_r+1) / 2, "");
+                                    (nbspace_r + 1) / 2, "");
 
                             more_col_wrapping = 0;
                             goto loop_end;
@@ -995,6 +995,7 @@ print_aligned_text_bteq(const printTableContentBteq *cont, FILE *fout, bool is_p
                         (!format->wrap_right_border && i > 0))
                         fputs(curr_nl_line ? format->header_nl_left : " ",
                               fout);
+
                     if (!header_done[i])
                     {
                         nbspace = width_wrap[i] - this_line->width;
@@ -1026,7 +1027,8 @@ loop_end:
             }
             if (col_count_copy) {
                 _print_horizontal_line_bteq(col_count_copy, width_wrap_copy,
-                                   opt_border, PRINT_RULE_MIDDLE_BTEQ, format, fout);
+                                            opt_border, PRINT_RULE_MIDDLE_BTEQ,
+                                            format, fout);
             } else {
                  _print_horizontal_line(col_count, width_wrap, opt_border,
                                         PRINT_RULE_MIDDLE_BTEQ, format, fout);
@@ -1086,7 +1088,7 @@ loop_end:
                     else if (wrap[j] == PRINT_LINE_WRAP_NEWLINE_BTEQ)
                         fputs(format->nl_left, fout);
                     else {
-                        if (j + 1 != col_count_copy || table_width2 != 0) {
+                        if (j + 1 != col_count_copy || char_count_in_last_column != 0) {
                             fputc(' ', fout);
                         }
                     }
@@ -1122,8 +1124,8 @@ loop_end:
                         }
                         if (col_count_copy && col_count_copy == j + 1) {
                             fputnbytes(fout,
-                                       table_width2 <= 1 ? "" : (char *) (this_line->ptr + bytes_output[j]),
-                                       table_width2 <= 1 ? table_width2-2 : table_width2 - 1);
+                                       char_count_in_last_column <= 1 ? "" : (char *) (this_line->ptr + bytes_output[j]),
+                                       char_count_in_last_column <= 1 ? char_count_in_last_column - 2 : char_count_in_last_column - 1);
                         } else {
                             fputnbytes(fout,
                                       (char *) (this_line->ptr + bytes_output[j]),
@@ -1132,10 +1134,10 @@ loop_end:
                     }
                     else        /* Left aligned cell */
                     {
-                        if (col_count_copy && j+1 == col_count_copy) {
+                        if (col_count_copy && j + 1 == col_count_copy) {
                             fputnbytes(fout,
-                                       table_width2 <= 1 ? "" : (char *) (this_line->ptr + bytes_output[j]),
-                                       table_width2 <= 1 ? table_width2-2 : table_width2 - 1);
+                                       char_count_in_last_column <= 1 ? "" : (char *) (this_line->ptr + bytes_output[j]),
+                                       char_count_in_last_column <= 1 ? char_count_in_last_column - 2 : char_count_in_last_column - 1);
                         } else {
                             fputnbytes(fout,
                                       (char *) (this_line->ptr + bytes_output[j]),

@@ -62,7 +62,7 @@ static dotResult exec_command(const char *cmd,
              PQExpBuffer query_buf,
              PQExpBuffer previous_buf);
 static dotResult exec_command_logon(BteqScanState scan_state, bool active_branch);
-static char *read_connect_arg(BteqScanState scan_state);
+static char *read_arg(BteqScanState scan_state);
 static dotResult exec_command_quit(BteqScanState scan_state, bool active_branch);
 static dotResult exec_command_set(BteqScanState scan_state, bool active_branch);
 static void ignore_dot_options(BteqScanState scan_state);
@@ -73,6 +73,7 @@ static bool do_connect(enum trivalue reuse_previous_specification,
                        char *dbname, char *user, char *host, char *port,
                        char *password);
 static void printSSLInfo(void);
+void to_uppper(char *str);
 
 #ifdef WIN32
 static void checkWin32Codepage(void);
@@ -239,16 +240,16 @@ extract_token(char *command, char *delimiter, char **left, char **right) {
     }
     char *command_dup = strdup(command);
 
-    char *value;
-    value = strtok(command_dup, delimiter);
+    char *tmp;
+    tmp = strtok(command_dup, delimiter);
 
-    if (value != NULL) {
-       *left = strdup(value);
+    if (tmp != NULL) {
+       *left = strdup(tmp);
     }
     if (left != NULL) {
-        value = strtok(NULL,delimiter);
-        if (value != NULL) {
-            *right = strdup(value);
+        tmp = strtok(NULL,delimiter);
+        if (tmp != NULL) {
+            *right = strdup(tmp);
         }
     }
     free(command_dup);
@@ -312,7 +313,7 @@ exec_command_logon(BteqScanState scan_state, bool active_branch)
         }
     }
 
-    success = do_connect(TRI_NO, user, "postgres", host, port, pass);
+    success = do_connect(TRI_NO, NULL, user, host, port, pass);
 cleanup:
     free(logon);
     free(host_port);
@@ -347,31 +348,39 @@ static dotResult
 exec_command_set(BteqScanState scan_state, bool active_branch)
 {
     bool        success = true;
-    char        quote;
     if (active_branch)
     {
-        char *opt0 = read_connect_arg(scan_state);
-        if (opt0)
+        char *width_keyword = read_arg(scan_state);
+        if (width_keyword != NULL )
         {
-            char       *opt;
+            char       *width_value;
             char       *ptr;
-            opt = read_connect_arg(scan_state);
-            if (opt && strcasecmp(opt0, "width") == 0) {
+            if (strcasecmp(width_keyword, "width") == 0) {
+                width_value = read_arg(scan_state);
+                if (width_value != NULL) {
 
-                int value = strtol(opt, &ptr, 10);
-                if (*ptr) {
-                    printf("*** Error: WIDTH command keyword must be followed by a number.\n");
-                    success = false;
-                } else if (value < MIN_WIDTH || value > MAX_WIDTH) {
-                    printf("*** Error: Width value must be in the 20..1048575 range.\n");
-                    success = false;
+                    int value = strtol(width_value, &ptr, 10);
+                    if (*ptr) {
+                        printf("*** Error: WIDTH command keyword must be followed by a number.\n");
+                        success = false;
+                    } else if (value < MIN_WIDTH || value > MAX_WIDTH) {
+                        printf("*** Error: Width value must be in the 20..1048575 range.\n");
+                        success = false;
+                    } else {
+                        pset.popt_bteq.topt.table_width = value;
+                    }
                 } else {
-                    pset.popt_bteq.topt.table_width = value;
+                    printf("*** Error: WIDTH command keyword must be followed by a number.\n");
                 }
+                free(width_value);
+            } else {
+                to_uppper(width_keyword);
+                printf("*** Error: Unrecognized SET command '%s'.\n",width_keyword);
             }
-            free(opt);
+        } else {
+            printf("*** Error: Unrecognized SET command.\n");
         }
-        free(opt0);
+        free(width_keyword);
     }
     else
         ignore_dot_options(scan_state);
@@ -651,14 +660,14 @@ SyncVariablesbteq(void)
 }
 
 /*
- * Read and interpret an argument to the .logon dot command.
+ * Read and interpret an argument to the dot command.
  *
  * Returns a malloc'd string, or NULL if no/empty argument.
  */
 
 
 static char *
-read_connect_arg(BteqScanState scan_state)
+read_arg(BteqScanState scan_state)
 {
     char       *result;
     char        quote;
@@ -669,10 +678,10 @@ read_connect_arg(BteqScanState scan_state)
      * take unquoted arguments verbatim (don't downcase them). For now,
      * double-quoted arguments may be stripped of double quotes (as if SQL
      * identifiers).  By 7.4 or so, pg_dump files can be expected to
-     * double-quote all mixed-case \connect arguments, and then we can get rid
-     * of OT_SQLIDHACK.
+     * double-quote all mixed-case dot command arguments, and then we can get rid
+     * of OT_BTEQ_NORMAL.
      */
-    result = bteq_scan_dot_option(scan_state, OT_BTEQ_SQLIDHACK, &quote, true);
+    result = bteq_scan_dot_option(scan_state, OT_BTEQ_NORMAL, &quote, true);
 
     if (!result)
         return NULL;
@@ -785,3 +794,14 @@ process_file_bteq(char *filename, bool use_relative_path)
     return result;
 }
 
+
+/*
+* String to uppercase
+*/
+void
+to_uppper(char *str) {
+    while(*str != '\0') {
+        *str=toupper(*str);
+        str++;
+    }
+}
