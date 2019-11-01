@@ -1119,9 +1119,14 @@ loop_end:
                     if (cont->aligns[j] == 'r') /* Right aligned cell */
                     {
                         /* spaces first */
-                        if (j + 1 != col_count_copy) {
+                        if ( j + 1 == col_count_copy) {
+                            if (chars_to_output < char_count_in_last_column) {
+                                fprintf(fout, "%*s", char_count_in_last_column - chars_to_output - 1, "");
+                            }
+                        } else {
                             fprintf(fout, "%*s", width_wrap[j] - chars_to_output, "");
                         }
+
                         if (col_count_copy && col_count_copy == j + 1) {
                             fputnbytes(fout,
                                        char_count_in_last_column <= 1 ? "" : (char *) (this_line->ptr + bytes_output[j]),
@@ -1139,8 +1144,7 @@ loop_end:
                                        char_count_in_last_column <= 1 ? "" : (char *) (this_line->ptr + bytes_output[j]),
                                        char_count_in_last_column <= 1 ? char_count_in_last_column - 2 : char_count_in_last_column - 1);
                         } else {
-                            fputnbytes(fout,
-                                      (char *) (this_line->ptr + bytes_output[j]),
+                            fputnbytes(fout, (char *)(this_line->ptr + bytes_output[j]),
                                        bytes_to_output);
                         }
                     }

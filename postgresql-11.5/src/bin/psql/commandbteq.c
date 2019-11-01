@@ -150,10 +150,11 @@ HandleDotCmds(BteqScanState scan_state,
 
         conditional_stack_push(cstack, IFSTATE_IGNORED);
         while ((arg = bteq_scan_dot_option(scan_state,
-                                             OT_BTEQ_NORMAL, NULL, false)))
+                                             OT_BTEQ_NORMAL, NULL, true)))
         {
             if (active_branch)
-                psql_error("\\%s: extra argument \"%s\" ignored\n", cmd, arg);
+                psql_error("*** Error: Invalid command syntax.\n     Extra text found starting at '%s'.\n",
+                           arg);
             free(arg);
         }
         conditional_stack_pop(cstack);
@@ -211,11 +212,12 @@ exec_command(const char *cmd,
                    cmd);
     }
 
-    if (strcasecmp(cmd, "logon") == 0) {
+    if (strcasecmp(cmd, "logon") == 0 || strcasecmp(cmd, "logon;") == 0) {
         status = exec_command_logon(scan_state, active_branch);
-    } else if (strcasecmp(cmd, "set") == 0) {
+    } else if (strcasecmp(cmd, "set") == 0 || strcasecmp(cmd, "set;") == 0) {
         status = exec_command_set(scan_state, active_branch);
-    } else if (strcasecmp(cmd, "quit") == 0 || strcasecmp(cmd, "q") == 0) {
+    } else if (strcasecmp(cmd, "quit") == 0 || strcasecmp(cmd, "q") == 0
+               || strcasecmp(cmd, "quit;") == 0 || strcasecmp(cmd, "q;") == 0) {
         status = exec_command_quit(scan_state, active_branch);
     } else {
         status = BTEQ_CMD_UNKNOWN;
@@ -358,27 +360,43 @@ exec_command_set(BteqScanState scan_state, bool active_branch)
             if (strcasecmp(width_keyword, "width") == 0) {
                 width_value = read_arg(scan_state);
                 if (width_value != NULL) {
+                    char *arg;
+                    if ((arg = read_arg(scan_state)) != NULL)
+                    {
+                        if (pset.cur_cmd_interactive) {
+                            printf(" *** Error: Invalid command syntax.\n"
+                                   "            Extra text found starting at '%s'.\n", arg);
+                        } else {
+                            printf(" *** Warning: Ignoring extra text found starting at '%s'.\n"
+                                   "              The current instruction's remaining text has been discarded.\n"
+                                   "              Future BTEQ versions may not be able to be lenient\n"
+                                   "              about this invalid syntax. Correct the script to\n"
+                                   "              ensure it can continue to work.\n", arg);
+                        }
+                        free(arg);
+                        return BTEQ_CMD_ERROR;
+                    }
 
                     int value = strtol(width_value, &ptr, 10);
                     if (*ptr) {
-                        printf("*** Error: WIDTH command keyword must be followed by a number.\n");
+                        printf(" *** Error: WIDTH command keyword must be followed by a number.\n");
                         success = false;
                     } else if (value < MIN_WIDTH || value > MAX_WIDTH) {
-                        printf("*** Error: Width value must be in the 20..1048575 range.\n");
+                        printf(" *** Error: Width value must be in the 20..1048575 range.\n");
                         success = false;
                     } else {
                         pset.popt_bteq.topt.table_width = value;
                     }
                 } else {
-                    printf("*** Error: WIDTH command keyword must be followed by a number.\n");
+                    printf(" *** Error: WIDTH command keyword must be followed by a number.\n");
                 }
                 free(width_value);
             } else {
                 to_uppper(width_keyword);
-                printf("*** Error: Unrecognized SET command '%s'.\n",width_keyword);
+                printf(" *** Error: Unrecognized SET command '%s'.\n",width_keyword);
             }
         } else {
-            printf("*** Error: Unrecognized SET command.\n");
+            printf(" *** Error: Unrecognized SET command.\n");
         }
         free(width_keyword);
     }
@@ -800,8 +818,10 @@ process_file_bteq(char *filename, bool use_relative_path)
 */
 void
 to_uppper(char *str) {
-    while(*str != '\0') {
-        *str=toupper(*str);
-        str++;
+    if(str != NULL) {
+        while(*str != '\0') {
+            *str = toupper(*str);
+            str++;
+        }
     }
 }

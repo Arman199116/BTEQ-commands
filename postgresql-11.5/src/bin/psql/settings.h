@@ -90,7 +90,7 @@ typedef struct _psqlSettings
 	PGresult   *last_error_result;	/* most recent error result, if any */
 
 	printQueryOpt popt;
-    printQueryOptBteq popt_bteq;
+	printQueryOptBteq popt_bteq;
 
 	char	   *gfname;			/* one-shot file output argument for \g */
 	bool		g_expanded;		/* one-shot expanded output requested via \gx */
