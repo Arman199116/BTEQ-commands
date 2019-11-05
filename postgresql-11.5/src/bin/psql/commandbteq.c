@@ -45,6 +45,13 @@
 
 #define MAX_WIDTH 1048575
 #define MIN_WIDTH 20
+#define LOGON_ERROR " *** Error:  Invalid logon!\n"
+#define WIDTH_VALUE_ERROR " *** Error: WIDTH command keyword must be followed by a number.\n"
+#define WIDTH_VALUE_RANGE_ERROR " *** Error: Width value must be in the 20..1048575 range.\n"
+#define EXTRA_INTERACTIVE_TEXT_WARNING " *** Error: Invalid command syntax.\n            Extra text found starting at '%s'.\n"
+#define EXTRA_TEXT_BATCH_TEXT_WARNING " *** Warning: Ignoring extra text found starting at '%s'.\n              The current instruction's remaining text has been discarded.\n              Future BTEQ versions may not be able to be lenient\n              about this invalid syntax. Correct the script to\n              ensure it can continue to work.\n"
+#define WIDTH_KEYWORD_ERROR " *** Error: Unrecognized SET command '%s'.\n"
+#define UNRECOGNIZED_COMMAND_ERROR " *** Error: Unrecognized %s command.\n"
 
 /*
  * Editable database object types.
@@ -74,6 +81,7 @@ static bool do_connect(enum trivalue reuse_previous_specification,
                        char *password);
 static void printSSLInfo(void);
 void to_uppper(char *str);
+void cat_symbols(char *str, char *symbols);
 
 #ifdef WIN32
 static void checkWin32Codepage(void);
@@ -120,7 +128,7 @@ HandleDotCmds(BteqScanState scan_state,
 
     /* Parse off the command name */
     cmd = bteq_scan_dot_command(scan_state);
-
+    cat_symbols(cmd, "; ");
     if (PQstatus(pset.db) == CONNECTION_BAD && strcasecmp(cmd, "logon") != 0 &&
         strcasecmp(cmd, "q") != 0 && strcasecmp(cmd, "quit") != 0) {
         printf("Enter your logon or BTEQ command\n");
@@ -132,10 +140,8 @@ HandleDotCmds(BteqScanState scan_state,
 
     if (status == BTEQ_CMD_UNKNOWN)
     {
-        if (pset.cur_cmd_interactive)
-            psql_error("Invalid command \\%s. Try \\? for help.\n", cmd);
-        else
-            psql_error("invalid command \\%s\n", cmd);
+        to_uppper(cmd);
+        printf(UNRECOGNIZED_COMMAND_ERROR, cmd);
         status = BTEQ_CMD_ERROR;
     }
 
@@ -153,8 +159,7 @@ HandleDotCmds(BteqScanState scan_state,
                                              OT_BTEQ_NORMAL, NULL, true)))
         {
             if (active_branch)
-                psql_error("*** Error: Invalid command syntax.\n     Extra text found starting at '%s'.\n",
-                           arg);
+                printf(EXTRA_INTERACTIVE_TEXT_WARNING, arg);
             free(arg);
         }
         conditional_stack_pop(cstack);
@@ -212,12 +217,11 @@ exec_command(const char *cmd,
                    cmd);
     }
 
-    if (strcasecmp(cmd, "logon") == 0 || strcasecmp(cmd, "logon;") == 0) {
+    if (strcasecmp(cmd, "logon") == 0) {
         status = exec_command_logon(scan_state, active_branch);
-    } else if (strcasecmp(cmd, "set") == 0 || strcasecmp(cmd, "set;") == 0) {
+    } else if (strcasecmp(cmd, "set") == 0) {
         status = exec_command_set(scan_state, active_branch);
-    } else if (strcasecmp(cmd, "quit") == 0 || strcasecmp(cmd, "q") == 0
-               || strcasecmp(cmd, "quit;") == 0 || strcasecmp(cmd, "q;") == 0) {
+    } else if (strcasecmp(cmd, "quit") == 0 || strcasecmp(cmd, "q") == 0) {
         status = exec_command_quit(scan_state, active_branch);
     } else {
         status = BTEQ_CMD_UNKNOWN;
@@ -291,7 +295,7 @@ exec_command_logon(BteqScanState scan_state, bool active_branch)
     bool success = true;
 
     if (host == NULL || user == NULL) {
-        psql_error("All connection parameters must be supplied because no "
+        printf("All connection parameters must be supplied because no "
                    "database connection exists\n");
         success = false;
         goto cleanup;
@@ -303,11 +307,11 @@ exec_command_logon(BteqScanState scan_state, bool active_branch)
         }
         if (pass != NULL && strlen(pass) > 0) {
 
-            printf("Invalid logon!\n");
+            printf(LOGON_ERROR);
             success = false;
             goto cleanup;
         }
-        pass = (char*)malloc(50*sizeof(char));
+        pass = (char *)malloc(50*sizeof(char));
         simple_prompt("Password ", pass, 50, false);
     } else {
         if (pass) {
@@ -353,50 +357,45 @@ exec_command_set(BteqScanState scan_state, bool active_branch)
     if (active_branch)
     {
         char *width_keyword = read_arg(scan_state);
-        if (width_keyword != NULL )
-        {
-            char       *width_value;
-            char       *ptr;
-            if (strcasecmp(width_keyword, "width") == 0) {
-                width_value = read_arg(scan_state);
-                if (width_value != NULL) {
-                    char *arg;
-                    if ((arg = read_arg(scan_state)) != NULL)
-                    {
-                        if (pset.cur_cmd_interactive) {
-                            printf(" *** Error: Invalid command syntax.\n"
-                                   "            Extra text found starting at '%s'.\n", arg);
-                        } else {
-                            printf(" *** Warning: Ignoring extra text found starting at '%s'.\n"
-                                   "              The current instruction's remaining text has been discarded.\n"
-                                   "              Future BTEQ versions may not be able to be lenient\n"
-                                   "              about this invalid syntax. Correct the script to\n"
-                                   "              ensure it can continue to work.\n", arg);
-                        }
-                        free(arg);
-                        return BTEQ_CMD_ERROR;
-                    }
-
-                    int value = strtol(width_value, &ptr, 10);
-                    if (*ptr) {
-                        printf(" *** Error: WIDTH command keyword must be followed by a number.\n");
-                        success = false;
-                    } else if (value < MIN_WIDTH || value > MAX_WIDTH) {
-                        printf(" *** Error: Width value must be in the 20..1048575 range.\n");
-                        success = false;
-                    } else {
-                        pset.popt_bteq.topt.table_width = value;
-                    }
-                } else {
-                    printf(" *** Error: WIDTH command keyword must be followed by a number.\n");
-                }
-                free(width_value);
-            } else {
-                to_uppper(width_keyword);
-                printf(" *** Error: Unrecognized SET command '%s'.\n",width_keyword);
+        if (width_keyword == NULL ) {
+            return BTEQ_CMD_UNKNOWN;
+        }
+        char       *width_value;
+        char       *ptr;
+        if (strcasecmp(width_keyword, "width") == 0) {
+            width_value = read_arg(scan_state);
+            if (width_value == NULL) {
+                printf(WIDTH_VALUE_ERROR);
+                return BTEQ_CMD_ERROR;
             }
+            char *arg = bteq_scan_dot_option(scan_state, OT_BTEQ_WHOLE_LINE, NULL, true);
+
+            if (arg != NULL)
+            {
+                cat_symbols(arg, "; ");
+                if (pset.cur_cmd_interactive) {
+                    printf(EXTRA_INTERACTIVE_TEXT_WARNING, arg);
+                } else {
+                    printf(EXTRA_TEXT_BATCH_TEXT_WARNING, arg);
+                }
+                free(arg);
+                return BTEQ_CMD_ERROR;
+            }
+            int value = strtol(width_value, &ptr, 10);
+            if (*ptr) {
+                printf(WIDTH_VALUE_ERROR);
+                success = false;
+            } else if (value < MIN_WIDTH || value > MAX_WIDTH) {
+                printf(WIDTH_VALUE_RANGE_ERROR);
+                success = false;
+            } else {
+                pset.popt_bteq.topt.table_width = value;
+            }
+            free(width_value);
         } else {
-            printf(" *** Error: Unrecognized SET command.\n");
+            to_uppper(width_keyword);
+            printf(WIDTH_KEYWORD_ERROR, width_keyword);
+            success = false;
         }
         free(width_keyword);
     }
@@ -818,10 +817,29 @@ process_file_bteq(char *filename, bool use_relative_path)
 */
 void
 to_uppper(char *str) {
-    if(str != NULL) {
-        while(*str != '\0') {
-            *str = toupper(*str);
-            str++;
+    if(str == NULL) {
+        return;
+    }
+    while(*str != '\0') {
+        *str = toupper(*str);
+        str++;
+    }
+}
+
+
+/*
+* Delete the selected symbols at the end of the string
+*/
+void
+cat_symbols(char *str, char *symbols) {
+    if (str == NULL || symbols == NULL) {
+        return;
+    }
+    int len = strlen(str) - 1;
+    for (int i = 0; symbols[i] != '\0'; i++) {
+        while (*(str + len) == symbols[i] && *str != '\0') {
+            *(str + len--) = '\0';
+            i = 0;
         }
     }
 }
