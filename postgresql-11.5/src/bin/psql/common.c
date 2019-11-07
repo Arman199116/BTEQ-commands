@@ -34,6 +34,7 @@ static bool ExecQueryUsingCursor(const char *query, double *elapsed_msec);
 static bool command_no_begin(const char *query);
 static bool is_select_command(const char *query);
 
+#define DB_CONNECT_WARNING " *** Warning: You must log on before sending SQL requests.\n"
 
 /*
  * openQueryOutputFile --- attempt to open a query output file
@@ -751,7 +752,7 @@ PSQLexecWatch(const char *query, const printQueryOpt *opt)
 
 	if (!pset.db)
 	{
-		psql_error("You are currently not connected to a database.\n");
+		printf("You are currently not connected to a database.\n");
 		return 0;
 	}
 
@@ -1344,7 +1345,7 @@ SendQuery(const char *query)
 
 	if (!pset.db)
 	{
-		psql_error("You are currently not connected to a database.\n");
+		psql_error(DB_CONNECT_WARNING);
 		goto sendquery_cleanup;
 	}
 

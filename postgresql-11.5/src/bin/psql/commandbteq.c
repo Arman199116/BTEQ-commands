@@ -51,7 +51,7 @@
 #define EXTRA_TEXT_ERROR " *** Error: Invalid command syntax.\n            Extra text found starting at '%s'.\n"
 #define EXTRA_TEXT_WARNING " *** Warning: Ignoring extra text found starting at '%s'.\n              The current instruction's remaining text has been discarded.\n              Future BTEQ versions may not be able to be lenient\n              about this invalid syntax. Correct the script to\n              ensure it can continue to work.\n"
 #define UNRECOGNIZED_SET_COMMAND_ERROR " *** Error: Unrecognized SET command '%s'.\n"
-#define UNRECOGNIZED_COMMAND_ERROR " *** Error: Unrecognized %s command.\n"
+#define UNRECOGNIZED_COMMAND_ERROR " *** Error: Unrecognized '%s'.\n"
 
 /*
  * Editable database object types.
@@ -129,8 +129,7 @@ HandleDotCmds(BteqScanState scan_state,
     /* Parse off the command name */
     cmd = bteq_scan_dot_command(scan_state);
     cat_symbols(cmd, "; ");
-    if (PQstatus(pset.db) == CONNECTION_BAD && strcasecmp(cmd, "logon") != 0 &&
-        strcasecmp(cmd, "q") != 0 && strcasecmp(cmd, "quit") != 0) {
+    if (PQstatus(pset.db) == CONNECTION_BAD && !PSCAN_BTEQ_DOT) {
         printf("Enter your logon or BTEQ command\n");
         return BTEQ_CMD_NEWEDIT;
     }
@@ -815,7 +814,7 @@ process_file_bteq(char *filename, bool use_relative_path)
 char *
 to_uppper(char *str) {
     if (str == NULL) {
-        return "";
+        return NULL;
     }
     int i = 0;
     while (*(str + i) != '\0') {
