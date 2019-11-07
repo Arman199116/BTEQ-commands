@@ -359,36 +359,35 @@ exec_command_set(BteqScanState scan_state, bool active_branch)
         if (width_keyword == NULL ) {
             return BTEQ_CMD_UNKNOWN;
         }
-        char       *width_value;
+        char       *width_arg;
         char       *ptr;
         if (strcasecmp(width_keyword, "width") == 0) {
-            width_value = read_arg(scan_state);
-            if (width_value == NULL) {
+            width_arg = read_arg(scan_state);
+            if (width_arg == NULL) {
                 printf(WIDTH_VALUE_ERROR);
                 return BTEQ_CMD_ERROR;
             }
+            int width_value = strtol(width_arg, &ptr, 10);
             char *arg = bteq_scan_dot_option(scan_state, OT_BTEQ_WHOLE_LINE, NULL, true);
             cat_symbols(arg, "; \t");
-            if (arg != NULL && arg[0] != '\0') {
-                if (pset.cur_cmd_interactive) {
-                    printf(EXTRA_TEXT_ERROR, arg);
-                } else {
-                    printf(EXTRA_TEXT_WARNING, arg);
-                }
-                free(arg);
-                return BTEQ_CMD_ERROR;
-            }
-            int value = strtol(width_value, &ptr, 10);
             if (*ptr) {
                 printf(WIDTH_VALUE_ERROR);
                 success = false;
-            } else if (value < MIN_WIDTH || value > MAX_WIDTH) {
+            } else if (width_value < MIN_WIDTH || width_value > MAX_WIDTH) {
                 printf(WIDTH_VALUE_RANGE_ERROR);
                 success = false;
             } else {
-                pset.popt_bteq.topt.table_width = value;
+                if (arg != NULL && arg[0] != '\0') {
+                    if (pset.cur_cmd_interactive) {
+                        printf(EXTRA_TEXT_ERROR, arg);
+                    } else {
+                        printf(EXTRA_TEXT_WARNING, arg);
+                    }
+                    free(arg);
+                }
+                pset.popt_bteq.topt.table_width = width_value;
             }
-            free(width_value);
+            free(width_arg);
         } else {
             printf(UNRECOGNIZED_SET_COMMAND_ERROR, to_uppper(width_keyword));
             success = false;
