@@ -31,8 +31,8 @@ extern dotResult HandleDotCmds(BteqScanState scan_state,
 
 extern void connection_warningsbteq(bool in_startup);
 extern void SyncVariablesbteq(void);
-extern int	process_file_bteq(char *filename, bool use_relative_path);
-extern void	extract_token(char *command, char *delimiter, char **left, char **right);
+extern int  process_file_bteq(char *filename, bool use_relative_path);
+extern void extract_token(char *command, char *delimiter, char **left, char **right);
 
 
 #endif                            /* COMMAND_BTEQ_H */

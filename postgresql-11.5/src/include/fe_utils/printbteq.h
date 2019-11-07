@@ -102,6 +102,7 @@ typedef struct printTableOptBteq
                                  * 1=dividing lines, 2=full */
     unsigned short int pager;    /* use pager for output (if to stdout and
                                  * stdout is a tty) 0=off 1=on 2=always */
+    int            table_width;
     int            pager_min_lines;    /* don't use pager unless there are at
                                      * least this many lines */
     bool        tuples_only;    /* don't output headers, row counts, etc. */
@@ -150,6 +151,7 @@ typedef struct printTableContentBteq
     const char **header;        /* Pointer to the last added header */
     const char **cells;            /* NULL-terminated array of cell content
                                  * strings */
+    int           table_width;
     const char **cell;            /* Pointer to the last added cell */
     long        cellsadded;        /* Number of cells added this far */
     bool       *cellmustfree;    /* true for cells that need to be free()d */

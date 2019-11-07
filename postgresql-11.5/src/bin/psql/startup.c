@@ -171,9 +171,23 @@ main(int argc, char *argv[])
 
     refresh_utf8format(&(pset.popt.topt));
 
+    pset.popt_bteq.topt.format = PRINT_ALIGNED;
+    pset.popt_bteq.topt.border = 1;
+    pset.popt_bteq.topt.pager = 1;
+    pset.popt_bteq.topt.pager_min_lines = 0;
+    pset.popt_bteq.topt.start_table = true;
+    pset.popt_bteq.topt.stop_table = true;
+    pset.popt_bteq.topt.default_footer = true;
+
+    pset.popt_bteq.topt.unicode_border_linestyle = UNICODE_LINESTYLE_SINGLE;
+    pset.popt_bteq.topt.unicode_column_linestyle = UNICODE_LINESTYLE_SINGLE;
+    pset.popt_bteq.topt.unicode_header_linestyle = UNICODE_LINESTYLE_SINGLE;
+
+    refresh_utf8format(&(pset.popt_bteq.topt));
+
     /* We must get COLUMNS here before readline() sets it */
     pset.popt.topt.env_columns = getenv("COLUMNS") ? atoi(getenv("COLUMNS")) : 0;
-
+    pset.popt_bteq.topt.env_columns = getenv("COLUMNS") ? atoi(getenv("COLUMNS")) : 0;
     pset.notty = (!isatty(fileno(stdin)) || !isatty(fileno(stdout)));
 
     pset.getPassword = TRI_DEFAULT;
@@ -222,13 +236,24 @@ main(int argc, char *argv[])
         pset.popt.topt.fieldSep.separator = pg_strdup(DEFAULT_FIELD_SEP);
         pset.popt.topt.fieldSep.separator_zero = false;
     }
+    if (!pset.popt_bteq.topt.fieldSep.separator &&
+        !pset.popt_bteq.topt.fieldSep.separator_zero)
+    {
+        pset.popt_bteq.topt.fieldSep.separator = pg_strdup(DEFAULT_FIELD_SEP);
+        pset.popt_bteq.topt.fieldSep.separator_zero = false;
+    }
     if (!pset.popt.topt.recordSep.separator &&
         !pset.popt.topt.recordSep.separator_zero)
     {
         pset.popt.topt.recordSep.separator = pg_strdup(DEFAULT_RECORD_SEP);
         pset.popt.topt.recordSep.separator_zero = false;
     }
-
+    if (!pset.popt_bteq.topt.recordSep.separator &&
+        !pset.popt_bteq.topt.recordSep.separator_zero)
+    {
+        pset.popt_bteq.topt.recordSep.separator = pg_strdup(DEFAULT_RECORD_SEP);
+        pset.popt_bteq.topt.recordSep.separator_zero = false;
+    }
     if (pset.getPassword == TRI_YES)
     {
         /*

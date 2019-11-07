@@ -43,6 +43,16 @@
 #include "settings.h"
 #include "variables.h"
 
+#define MAX_WIDTH 1048575
+#define MIN_WIDTH 20
+#define LOGON_ERROR " *** Error:  Invalid logon!\n"
+#define WIDTH_VALUE_ERROR " *** Error: WIDTH command keyword must be followed by a number.\n"
+#define WIDTH_VALUE_RANGE_ERROR " *** Error: Width value must be in the 20..1048575 range.\n"
+#define EXTRA_TEXT_ERROR " *** Error: Invalid command syntax.\n            Extra text found starting at '%s'.\n"
+#define EXTRA_TEXT_WARNING " *** Warning: Ignoring extra text found starting at '%s'.\n              The current instruction's remaining text has been discarded.\n              Future BTEQ versions may not be able to be lenient\n              about this invalid syntax. Correct the script to\n              ensure it can continue to work.\n"
+#define UNRECOGNIZED_SET_COMMAND_ERROR " *** Error: Unrecognized SET command '%s'.\n"
+#define UNRECOGNIZED_COMMAND_ERROR " *** Error: Unrecognized '%s'.\n"
+
 /*
  * Editable database object types.
  */
@@ -59,18 +69,19 @@ static dotResult exec_command(const char *cmd,
              PQExpBuffer query_buf,
              PQExpBuffer previous_buf);
 static dotResult exec_command_logon(BteqScanState scan_state, bool active_branch);
-static char *read_connect_arg(BteqScanState scan_state);
+static char *read_arg(BteqScanState scan_state);
 static dotResult exec_command_quit(BteqScanState scan_state, bool active_branch);
 static dotResult exec_command_set(BteqScanState scan_state, bool active_branch);
 static void ignore_dot_options(BteqScanState scan_state);
 static bool is_branching_command(const char *cmd);
 static char *cat_space(char *str);
-
 static void copy_previous_query(PQExpBuffer query_buf, PQExpBuffer previous_buf);
 static bool do_connect(enum trivalue reuse_previous_specification,
                        char *dbname, char *user, char *host, char *port,
                        char *password);
 static void printSSLInfo(void);
+char *to_uppper(char *str);
+void cat_symbols(char *str, char *symbols);
 
 #ifdef WIN32
 static void checkWin32Codepage(void);
@@ -117,9 +128,8 @@ HandleDotCmds(BteqScanState scan_state,
 
     /* Parse off the command name */
     cmd = bteq_scan_dot_command(scan_state);
-
-    if (PQstatus(pset.db) == CONNECTION_BAD && strcasecmp(cmd, "logon") != 0 &&
-        strcasecmp(cmd, "q") != 0 && strcasecmp(cmd, "quit") != 0) {
+    cat_symbols(cmd, "; ");
+    if (PQstatus(pset.db) == CONNECTION_BAD && !PSCAN_BTEQ_DOT) {
         printf("Enter your logon or BTEQ command\n");
         return BTEQ_CMD_NEWEDIT;
     }
@@ -129,10 +139,7 @@ HandleDotCmds(BteqScanState scan_state,
 
     if (status == BTEQ_CMD_UNKNOWN)
     {
-        if (pset.cur_cmd_interactive)
-            psql_error("Invalid command \\%s. Try \\? for help.\n", cmd);
-        else
-            psql_error("invalid command \\%s\n", cmd);
+        printf(UNRECOGNIZED_COMMAND_ERROR, to_uppper(cmd));
         status = BTEQ_CMD_ERROR;
     }
 
@@ -147,10 +154,10 @@ HandleDotCmds(BteqScanState scan_state,
 
         conditional_stack_push(cstack, IFSTATE_IGNORED);
         while ((arg = bteq_scan_dot_option(scan_state,
-                                             OT_BTEQ_NORMAL, NULL, false)))
+                                             OT_BTEQ_NORMAL, NULL, true)))
         {
             if (active_branch)
-                psql_error("\\%s: extra argument \"%s\" ignored\n", cmd, arg);
+                printf(EXTRA_TEXT_ERROR, arg);
             free(arg);
         }
         conditional_stack_pop(cstack);
@@ -270,23 +277,23 @@ exec_command_logon(BteqScanState scan_state, bool active_branch)
 
     char *logon = bteq_scan_dot_option(scan_state, OT_BTEQ_WHOLE_LINE,
                                        NULL, false);
-    logon = cat_space(logon);
     if (logon != NULL) {
-    	extract_token(logon, "/", &host_port, &user_pass);
+        logon = cat_space(logon);
+        extract_token(logon, "/", &host_port, &user_pass);
     }
 
     if (host_port != NULL) {
-    	extract_token(host_port, ":", &host, &port);
+        extract_token(host_port, ":", &host, &port);
     }
 
     if (user_pass != NULL) {
-    	extract_token(user_pass, ",", &user, &pass);
+        extract_token(user_pass, ",", &user, &pass);
     }
 
     bool success = true;
 
     if (host == NULL || user == NULL) {
-        psql_error("All connection parameters must be supplied because no "
+        printf("All connection parameters must be supplied because no "
                    "database connection exists\n");
         success = false;
         goto cleanup;
@@ -295,14 +302,15 @@ exec_command_logon(BteqScanState scan_state, bool active_branch)
     if (pset.cur_cmd_interactive) {
         if (user) {
             user = cat_space(user);
+            cat_symbols(user,"; \t");
         }
         if (pass != NULL && strlen(pass) > 0) {
 
-            printf("Invalid logon!\n");
+            printf(LOGON_ERROR);
             success = false;
             goto cleanup;
         }
-        pass = (char*)malloc(50*sizeof(char));
+        pass = (char *)malloc(50*sizeof(char));
         simple_prompt("Password ", pass, 50, false);
     } else {
         if (pass) {
@@ -345,45 +353,46 @@ static dotResult
 exec_command_set(BteqScanState scan_state, bool active_branch)
 {
     bool        success = true;
-
     if (active_branch)
     {
-        char       *opt0 = bteq_scan_dot_option(scan_state,
-                                                  OT_BTEQ_NORMAL, NULL, false);
-
-        if (!opt0)
-        {
-            /* list all variables */
-            PrintVariables(pset.vars);
-            success = true;
+        char *width_keyword = read_arg(scan_state);
+        if (width_keyword == NULL ) {
+            return BTEQ_CMD_UNKNOWN;
         }
-        else
-        {
-            /*
-             * Set variable to the concatenation of the arguments.
-             */
-            char       *newval;
-            char       *opt;
-
-            opt = bteq_scan_dot_option(scan_state,
-                                         OT_BTEQ_NORMAL, NULL, false);
-            newval = pg_strdup(opt ? opt : "");
-            free(opt);
-
-            while ((opt = bteq_scan_dot_option(scan_state,
-                                                 OT_BTEQ_NORMAL, NULL, false)))
-            {
-                newval = pg_realloc(newval, strlen(newval) + strlen(opt) + 1);
-                strcat(newval, opt);
-                free(opt);
+        char       *width_arg;
+        char       *ptr;
+        if (strcasecmp(width_keyword, "width") == 0) {
+            width_arg = read_arg(scan_state);
+            if (width_arg == NULL) {
+                printf(WIDTH_VALUE_ERROR);
+                return BTEQ_CMD_ERROR;
             }
-
-            if (!SetVariable(pset.vars, opt0, newval))
+            int width_value = strtol(width_arg, &ptr, 10);
+            char *arg = bteq_scan_dot_option(scan_state, OT_BTEQ_WHOLE_LINE, NULL, true);
+            cat_symbols(arg, "; \t");
+            if (*ptr) {
+                printf(WIDTH_VALUE_ERROR);
                 success = false;
-
-            free(newval);
+            } else if (width_value < MIN_WIDTH || width_value > MAX_WIDTH) {
+                printf(WIDTH_VALUE_RANGE_ERROR);
+                success = false;
+            } else {
+                if (arg != NULL && arg[0] != '\0') {
+                    if (pset.cur_cmd_interactive) {
+                        printf(EXTRA_TEXT_ERROR, arg);
+                    } else {
+                        printf(EXTRA_TEXT_WARNING, arg);
+                    }
+                    free(arg);
+                }
+                pset.popt_bteq.topt.table_width = width_value;
+            }
+            free(width_arg);
+        } else {
+            printf(UNRECOGNIZED_SET_COMMAND_ERROR, to_uppper(width_keyword));
+            success = false;
         }
-        free(opt0);
+        free(width_keyword);
     }
     else
         ignore_dot_options(scan_state);
@@ -621,7 +630,7 @@ checkWin32Codepage(void)
 
 
 /*
- * SyncVariables
+ * SyncVariablesbteq
  *
  * Make bteq's internal variables agree with connection state upon
  * establishing a new connection.
@@ -643,7 +652,7 @@ SyncVariablesbteq(void)
     SetVariable(pset.vars, "PORT", PQport(pset.db));
     SetVariable(pset.vars, "ENCODING", pg_encoding_to_char(pset.encoding));
 
-    /* this bit should match connection_warnings(): */
+    /* this bit should match connection_warningsbteq(): */
     /* Try to get full text form of version, might include "devel" etc */
     server_version = PQparameterStatus(pset.db, "server_version");
     /* Otherwise fall back on pset.sversion */
@@ -663,14 +672,14 @@ SyncVariablesbteq(void)
 }
 
 /*
- * Read and interpret an argument to the .logon dot command.
+ * Read and interpret an argument to the dot command.
  *
  * Returns a malloc'd string, or NULL if no/empty argument.
  */
 
 
 static char *
-read_connect_arg(BteqScanState scan_state)
+read_arg(BteqScanState scan_state)
 {
     char       *result;
     char        quote;
@@ -681,10 +690,10 @@ read_connect_arg(BteqScanState scan_state)
      * take unquoted arguments verbatim (don't downcase them). For now,
      * double-quoted arguments may be stripped of double quotes (as if SQL
      * identifiers).  By 7.4 or so, pg_dump files can be expected to
-     * double-quote all mixed-case \connect arguments, and then we can get rid
-     * of OT_SQLIDHACK.
+     * double-quote all mixed-case dot command arguments, and then we can get rid
+     * of OT_BTEQ_NORMAL.
      */
-    result = bteq_scan_dot_option(scan_state, OT_BTEQ_SQLIDHACK, &quote, true);
+    result = bteq_scan_dot_option(scan_state, OT_BTEQ_NORMAL, &quote, true);
 
     if (!result)
         return NULL;
@@ -705,7 +714,6 @@ read_connect_arg(BteqScanState scan_state)
 /*
 * cat spaces
 */
-
 static char *
 cat_space(char *str) {
     size_t len = 0;
@@ -718,7 +726,7 @@ cat_space(char *str) {
         str[len--] = '\0';
     }
 
-    while ((*str == ' '|| str[len] == '\t' || str[len] == '\r') && *str != '\0') {
+    while ((*str == ' '|| *str == '\t' || *str == '\r') && *str != '\0') {
         str++;
     }
 
@@ -796,4 +804,39 @@ process_file_bteq(char *filename, bool use_relative_path)
 
     pset.inputfile = oldfilename;
     return result;
+}
+
+
+/*
+* String to uppercase
+*/
+char *
+to_uppper(char *str) {
+    if (str == NULL) {
+        return NULL;
+    }
+    int i = 0;
+    while (*(str + i) != '\0') {
+        *(str + i) = toupper(*(str + i));
+        i++;
+    }
+    return str;
+}
+
+
+/*
+* Delete the selected symbols at the end of the string
+*/
+void
+cat_symbols(char *str, char *symbols) {
+    if (str == NULL || symbols == NULL) {
+        return;
+    }
+    int len = strlen(str) - 1;
+    for (int i = 0; symbols[i] != '\0'; i++) {
+        while (*(str + len) == symbols[i] && *str != '\0') {
+            *(str + len--) = '\0';
+            i = 0;
+        }
+    }
 }
