@@ -51,7 +51,8 @@
 #define EXTRA_TEXT_ERROR " *** Error: Invalid command syntax.\n            Extra text found starting at '%s'.\n"
 #define EXTRA_TEXT_WARNING " *** Warning: Ignoring extra text found starting at '%s'.\n              The current instruction's remaining text has been discarded.\n              Future BTEQ versions may not be able to be lenient\n              about this invalid syntax. Correct the script to\n              ensure it can continue to work.\n"
 #define UNRECOGNIZED_SET_COMMAND_ERROR " *** Error: Unrecognized SET command '%s'.\n"
-#define UNRECOGNIZED_COMMAND_ERROR " *** Error: Unrecognized '%s'.\n"
+#define UNRECOGNIZED_COMMAND_ERROR " *** Error: Unrecognized command '%s'.\n"
+#define UNRECOGNIZED_COMMAND " *** Error: Unrecognized command.\n"
 
 /*
  * Editable database object types.
@@ -139,7 +140,12 @@ HandleDotCmds(BteqScanState scan_state,
 
     if (status == BTEQ_CMD_UNKNOWN)
     {
-        printf(UNRECOGNIZED_COMMAND_ERROR, to_uppper(cmd));
+        if (cmd == NULL || strcasecmp(cmd, "") == 0) {
+            printf(UNRECOGNIZED_COMMAND);
+        } else {
+            printf(UNRECOGNIZED_COMMAND_ERROR, to_uppper(cmd));
+        }
+        
         status = BTEQ_CMD_ERROR;
     }
 
