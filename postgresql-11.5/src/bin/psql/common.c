@@ -1345,7 +1345,7 @@ SendQuery(const char *query)
 
 	if (!pset.db)
 	{
-		psql_error(DB_CONNECT_WARNING);
+		printf(DB_CONNECT_WARNING);
 		goto sendquery_cleanup;
 	}
 

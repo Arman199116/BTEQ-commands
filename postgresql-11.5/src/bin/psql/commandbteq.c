@@ -75,7 +75,7 @@ static dotResult exec_command_quit(BteqScanState scan_state, bool active_branch)
 static dotResult exec_command_set(BteqScanState scan_state, bool active_branch);
 static void ignore_dot_options(BteqScanState scan_state);
 static bool is_branching_command(const char *cmd);
-static char *cat_space(char *str);
+static char *cat_space(char *str, char *symbols);
 static void copy_previous_query(PQExpBuffer query_buf, PQExpBuffer previous_buf);
 static bool do_connect(enum trivalue reuse_previous_specification,
                        char *dbname, char *user, char *host, char *port,
@@ -283,7 +283,7 @@ exec_command_logon(BteqScanState scan_state, bool active_branch)
     char *logon = bteq_scan_dot_option(scan_state, OT_BTEQ_WHOLE_LINE,
                                        NULL, false);
     if (logon != NULL) {
-        logon = cat_space(logon);
+        logon = cat_space(logon, " ");
         extract_token(logon, "/", &host_port, &user_pass);
     }
 
@@ -305,12 +305,9 @@ exec_command_logon(BteqScanState scan_state, bool active_branch)
     }
 
     if (pset.cur_cmd_interactive) {
-        if (user) {
-            user = cat_space(user);
-            cat_symbols(user,"; \t");
-        }
+        user = cat_space(user, " \t");
+        cat_symbols(user, "; \t");
         if (pass != NULL && strlen(pass) > 0) {
-
             printf(LOGON_ERROR);
             success = false;
             goto cleanup;
@@ -318,9 +315,8 @@ exec_command_logon(BteqScanState scan_state, bool active_branch)
         pass = (char *)malloc(50*sizeof(char));
         simple_prompt("Password ", pass, 50, false);
     } else {
-        if (pass) {
-            pass = cat_space(pass);
-        }
+            cat_symbols(pass, " ;");
+            pass = cat_space(pass, " \t");
     }
 
     success = do_connect(TRI_NO, NULL, user, host, port, pass);
@@ -357,46 +353,48 @@ exec_command_quit(BteqScanState scan_state, bool active_branch)
 static dotResult
 exec_command_set(BteqScanState scan_state, bool active_branch)
 {
-    bool        success = true;
+    bool success = true;
     if (active_branch)
     {
         char *width_keyword = read_arg(scan_state);
         if (width_keyword == NULL ) {
             return BTEQ_CMD_UNKNOWN;
         }
-        char       *width_arg;
-        char       *ptr;
-        if (strcasecmp(width_keyword, "width") == 0) {
-            width_arg = read_arg(scan_state);
-            if (width_arg == NULL) {
-                printf(WIDTH_VALUE_ERROR);
-                return BTEQ_CMD_ERROR;
-            }
-            int width_value = strtol(width_arg, &ptr, 10);
-            char *arg = bteq_scan_dot_option(scan_state, OT_BTEQ_WHOLE_LINE, NULL, true);
-            cat_symbols(arg, "; \t");
-            if (*ptr) {
-                printf(WIDTH_VALUE_ERROR);
-                success = false;
-            } else if (width_value < MIN_WIDTH || width_value > MAX_WIDTH) {
-                printf(WIDTH_VALUE_RANGE_ERROR);
-                success = false;
-            } else {
-                if (arg != NULL && arg[0] != '\0') {
-                    if (pset.cur_cmd_interactive) {
-                        printf(EXTRA_TEXT_ERROR, arg);
-                    } else {
-                        printf(EXTRA_TEXT_WARNING, arg);
-                    }
-                    free(arg);
-                }
-                pset.popt_bteq.topt.table_width = width_value;
-            }
-            free(width_arg);
-        } else {
+        char *width_arg;
+        char *ptr;
+        if (strcasecmp(width_keyword, "width") != 0) {
             printf(UNRECOGNIZED_SET_COMMAND_ERROR, to_uppper(width_keyword));
-            success = false;
+            free(width_keyword);
+            return BTEQ_CMD_ERROR;
         }
+
+        width_arg = read_arg(scan_state);
+        if (width_arg == NULL) {
+            free(width_keyword);
+            printf(WIDTH_VALUE_ERROR);
+            return BTEQ_CMD_ERROR;
+        }
+        int width_value = strtol(width_arg, &ptr, 10);
+        char *arg = bteq_scan_dot_option(scan_state, OT_BTEQ_WHOLE_LINE, NULL, true);
+        cat_symbols(arg, "; \t");
+        if (*ptr) {
+            printf(WIDTH_VALUE_ERROR);
+            success = false;
+        } else if (width_value < MIN_WIDTH || width_value > MAX_WIDTH) {
+            printf(WIDTH_VALUE_RANGE_ERROR);
+            success = false;
+        } else {
+            if (arg != NULL && arg[0] != '\0') {
+                if (pset.cur_cmd_interactive) {
+                    printf(EXTRA_TEXT_ERROR, arg);
+                } else {
+                    printf(EXTRA_TEXT_WARNING, arg);
+                }
+                free(arg);
+            }
+            pset.popt_bteq.topt.table_width = width_value;
+        }
+        free(width_arg);
         free(width_keyword);
     }
     else
@@ -720,23 +718,21 @@ read_arg(BteqScanState scan_state)
 * cat spaces
 */
 static char *
-cat_space(char *str) {
+cat_space(char *str, char *symbols) {
     size_t len = 0;
-    if (str == NULL || strcasecmp(str,"") == 0) {
-        return "";
+    if (str == NULL) {
+        return NULL;
     }
-
-    len = strlen(str)-1;
-    while (str[len] == ' ' || str[len] == '\t' || str[len] == '\r') {
-        str[len--] = '\0';
+    if (symbols == NULL) {
+        return str;
     }
-
-    while ((*str == ' '|| *str == '\t' || *str == '\r') && *str != '\0') {
-        str++;
-    }
-
-    if (str[len] == ';') {
-        str[len] = '\0';
+    for (int i = 0; symbols[i] != '\0'; ) {
+        if (*str == symbols[i]) {
+            str++;
+            i = 0;
+        } else {
+            i++;
+        }
     }
     return str;
 }
