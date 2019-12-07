@@ -2,7 +2,50 @@ PostgreSQL Database Management System
 =====================================
 
 This directory contains the source code distribution of the PostgreSQL
-database management system.
+database management system and
+the ability to work in BTEQ mode.
+
+=====================================
+
+There are no special dependencies for BTEQ mode to work.
+You need to perform the usual PostgreSQL installation process.
+See the file INSTALL for instructions on how to build and install.
+The following actions must be performed in order to work in the BTEQ mode.
+
+    - Interactive mode:
+      ./src/bin/psql/psql -m 1 or --mode 1
+    - Batch mode:
+      ./src/bin/psql/psql -m 1 or --mode 1 < cmd_filename
+
+The following files have been modified to work in BTEQ mode.
+
+    src/tools/pgindent/typedefs.list
+    src/tools/msvc/Mkvcbuild.pm
+    src/tools/msvc/clean.bat
+    src/fe_utils/Makefile
+    src/bin/psql/startup.c
+    src/bin/psql/settings.h
+    src/bin/psql/nls.mk
+    src/bin/psql/Makefile
+    src/bin/psql/common.h
+    src/bin/psql/common.c
+    src/bin/psql/.gitignore
+
+The following files were added to work in the BTEQ mode.
+
+    src/bin/psql/bteqscandot.h
+    src/bin/psql/bteqscandot.l
+    src/bin/psql/commandbteq.c
+    src/bin/psql/commandbteq.h
+    src/bin/psql/mainloopbteq.c
+    src/bin/psql/mainloopbteq.h
+    src/fe_utils/bteqscan.l
+    src/include/fe_utils/bteqscan.h
+    src/fe_utils/printbteq.c
+    src/include/fe_utils/printbteq.h
+    src/include/fe_utils/bteqscan_int.h
+
+=====================================
 
 PostgreSQL is an advanced object-relational database management system
 that supports an extended subset of the SQL standard, including
